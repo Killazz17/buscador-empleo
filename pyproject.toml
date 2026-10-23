@@ -1,0 +1,23 @@
+# Empaquetado estándar de Python. Con `python -m pip install -e .` se crea el comando `buscador`,
+# usable desde cualquier carpeta. "-e" (editable): instala un enlace a src/, así que tus cambios
+# en el código se ven al instante sin reinstalar.
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "buscador-empleo"
+version = "0.1.0"
+description = "Busca, filtra y prepara postulaciones de empleo; nunca envía nada sin tu aprobación."
+requires-python = ">=3.12"
+dependencies = []  # el núcleo solo usa la librería estándar
+
+[project.optional-dependencies]
+# Solo si usas proveedor = "claude": python -m pip install -e ".[claude]"
+claude = ["anthropic==2.2.0"]
+
+[project.scripts]
+buscador = "buscador.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

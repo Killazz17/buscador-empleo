@@ -1,0 +1,90 @@
+# Perfil de búsqueda de Sebastián. Edita este archivo para ajustar el ranking: no hace falta tocar código.
+# Los términos se comparan sin distinguir mayúsculas y como palabra completa
+# ("java" NO coincide con "javascript"). Comprueba los cambios con:
+#   python -m unittest tests.test_filtros
+
+# Las ofertas con menos puntos no salen en el ranking (se puede cambiar con --minimo).
+puntuacion_minima = 5
+
+# Palabras en el TÍTULO que indican un nivel adecuado (suman) o demasiado alto (restan).
+nivel_bonus = ["junior", "jr", "intern", "internship", "trainee", "graduate", "entry level",
+               "entry-level", "werkstudent", "praktikum", "praktikant"]
+nivel_penaliza = ["senior", "sr", "lead", "staff", "principal", "head", "director", "manager",
+                  "architect", "vp"]
+
+# Roles que no son para ti: si aparecen en el TÍTULO, la oferta se descarta.
+roles_excluidos = ["sales", "account executive", "marketing", "copywriter", "writer", "recruiter",
+                   "assistant", "customer success", "sdr", "bdr", "accountant", "legal"]
+
+# Idiomas que no dominas: si se mencionan (o la descripción está en alemán), resta.
+idiomas_excluyentes = ["german", "deutsch", "deutschkenntnisse", "french", "dutch"]
+
+# Dónde puedes trabajar. Fuera de tu país solo valen:
+#   - remoto abierto a tu región (la ubicación de la oferta nombra alguna de remoto_aceptado), o
+#   - presencial/híbrido si la oferta ofrece ayuda para mudarte (alguna palabra de reubicacion).
+# Un remoto que no dice región ("Remote (Zug)") se mantiene, pero con aviso y puntos.remoto_dudoso.
+[ubicacion]
+pais = ["costa rica", "heredia", "san josé", "san jose", "alajuela", "cartago"]
+remoto_aceptado = ["worldwide", "anywhere", "global", "latam", "latin america", "americas",
+                   "south america", "central america", "costa rica"]
+# Frases negadas o exigidas ("no visa sponsorship", "must have a work permit") NO cuentan.
+# "work permit" no está a propósito: casi siempre aparece como requisito, no como ayuda.
+reubicacion = ["relocation", "relocate", "visa sponsorship", "visa support", "sponsor your visa"]
+# Remoto pero solo para residentes de una zona (en título o descripción): se descarta.
+restricciones_remoto = ["remote from eu", "within eu", "within the eu", "eu only", "eu-based", "based in the eu",
+                        "europe only", "us only", "usa only", "us-based", "uk only", "eu residents",
+                        "must be based in", "must reside in"]
+
+[puntos]
+nivel_bonus = 5
+remoto_dudoso = -2
+# Fuerte a propósito: un puesto Senior casi nunca encaja con un perfil junior,
+# aunque su descripción mencione muchas de tus tecnologías.
+nivel_penaliza = -12
+idioma_excluyente = -8
+remoto = 2
+# Máximo de puntos por tecnologías que solo aparecen en la descripción
+# (evita que las descripciones que listan 15 tecnologías ganen siempre).
+tope_descripcion = 8
+
+# Peso de cada tecnología (en el título vale el doble). Cada tecnología cuenta una vez por oferta.
+# Para sinónimos usa alias:  nombre = { peso = 2, alias = ["otra forma", "otra más"] }
+# ("spring" ya cubre "spring boot", no hace falta alias).
+[tecnologias]
+# Núcleo: lo que más usas
+java = 3
+kotlin = 3
+spring = 3
+android = 3
+backend = { peso = 2, alias = ["back-end", "back end"] }
+fullstack = { peso = 2, alias = ["full stack", "full-stack"] }
+python = 2
+fastapi = 2
+react = 2
+typescript = 2
+"jetpack compose" = 2
+postgresql = 2
+docker = 2
+# Calidad y QA
+qa = 2
+"test automation" = 2
+cypress = 2
+junit = 1
+postman = 1
+# Complementarias
+javascript = 1
+"next.js" = { peso = 1, alias = ["nextjs"] }
+"node.js" = { peso = 1, alias = ["nodejs"] }
+mysql = 1
+oracle = 1
+sql = 1
+gcp = { peso = 1, alias = ["google cloud"] }
+"ci/cd" = 1
+"github actions" = 1
+"rest api" = { peso = 1, alias = ["rest apis", "restful"] }
+hibernate = 1
+laravel = 1
+php = 1
+security = 1
+pentest = 1
+"c++" = 1

@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "deny": [
+      "Bash(*buscador aprobar*)",
+      "Bash(*buscador enviada*)",
+      "PowerShell(*buscador aprobar*)",
+      "PowerShell(*buscador enviada*)",
+      "Bash(*sqlite3*)",
+      "PowerShell(*sqlite3*)",
+      "Edit(/data/**)"
+    ]
+  }
+}

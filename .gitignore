@@ -1,0 +1,22 @@
+# Datos descargados y la base de datos (contiene tus borradores: datos personales)
+data/
+*.db
+*.db-journal
+*.db-wal
+*.sqlite
+*.sqlite3
+# Secretos: van SOLO como variables de entorno (ANTHROPIC_API_KEY); por si acaso, ningún .env se sube
+.env
+.env.*
+# Datos personales: el CV en cualquier formato o variante de nombre
+*.pdf
+cv.*
+cv-*
+config/cv*
+# Archivos generados
+__pycache__/
+*.pyc
+.venv/
+.coverage
+htmlcov/
+*.egg-info/

@@ -1,0 +1,3 @@
+# Única dependencia de producción: solo se usa si config/ia.toml tiene proveedor = "claude".
+# Versión exacta (la probada): actualizar es una decisión consciente, no algo que pase al instalar.
+anthropic==2.2.0

@@ -1,0 +1,13 @@
+# Qué IA redacta los borradores. Cambiar de IA = cambiar este archivo (patrón Strategy).
+# Proveedores disponibles:
+#   "manual"   → GRATIS: copias el prompt a la web de Claude o Gemini y pegas la respuesta
+#   "claude"   → API de Anthropic, automático (necesita ANTHROPIC_API_KEY; ~$0,04 por carta)
+#   "simulado" → sin IA real: para probar el flujo preparar → aprobar
+proveedor = "manual"
+# En "manual" es solo una etiqueta de dónde la generaste (se guarda en el historial): "claude.ai", "gemini"…
+modelo = "claude.ai"
+
+# Para volver a la API de Claude:
+# proveedor = "claude"
+# modelo = "claude-opus-5-5"
+# esfuerzo = "medium"   # low | medium | high | xhigh | max (más alto = mejor y más caro)
