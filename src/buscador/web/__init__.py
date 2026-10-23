@@ -11,6 +11,7 @@ Límite honesto: un programa en tu PC que lea la página puede obtener el token.
 contra errores y webs ajenas, no contra software malicioso que ya corre con tu usuario.
 """
 
+import re
 import secrets
 from pathlib import Path
 
@@ -32,6 +33,35 @@ from buscador.preparacion import alertas_borrador, construir_prompt
 
 PLANTILLAS = Path(__file__).parent / "plantillas"
 CONFIRMACIONES = {"si", "sí"}
+# Avisos tras cada acción: el texto sale de esta lista cerrada, nunca de la URL (nada se "refleja").
+AVISOS = {
+    "descartada": "Oferta descartada",
+    "restaurada": "Oferta restaurada",
+    "preparada": "Borrador guardado",
+    "aprobada": "Carta aprobada",
+    "enviada": "¡Postulación registrada! Mucha suerte",
+}
+
+
+def _csp(nonce: str) -> str:
+    """Content-Security-Policy: solo se ejecutan los scripts que llevan el nonce de ESTA respuesta.
+
+    Aunque se colara HTML ajeno en la página, su <script> o un onclick="..." no correrían.
+    """
+    return ("default-src 'self'; "
+            f"script-src 'nonce-{nonce}'; "
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+            "font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; "
+            "base-uri 'none'; form-action 'self'; frame-ancestors 'none'")
+
+
+def _tipo_motivo(motivo: str) -> str:
+    """Para colorear los chips: 'pos' si suma, 'neg' si resta, 'info' si solo explica."""
+    if re.search(r"\+\d+$", motivo):
+        return "pos"
+    if re.search(r"-\d+$", motivo) or motivo.startswith(("rol excluido", "remoto restringido", "presencial fuera de")):
+        return "neg"
+    return "info"
 
 
 def crear_app(ruta_db: Path, ruta_cv: Path, ruta_plantilla: Path,
@@ -43,6 +73,19 @@ def crear_app(ruta_db: Path, ruta_cv: Path, ruta_plantilla: Path,
     vistas = Jinja2Templates(directory=PLANTILLAS)
     vistas.env.filters["url_segura"] = url_segura
     vistas.env.filters["s"] = sin_controles
+    vistas.env.filters["tipo_motivo"] = _tipo_motivo
+    vistas.env.filters["parrafos"] = normalizar_pegado  # solo para MOSTRAR cartas antiguas con saltos de más
+    # Test de Jinja para `select('match', patrón)`: Jinja no trae uno de regex de serie.
+    vistas.env.tests["match"] = lambda valor, patron: re.search(patron, str(valor)) is not None
+
+    @app.middleware("http")
+    async def cabeceras_de_seguridad(request: Request, call_next):
+        request.state.nonce = secrets.token_urlsafe(16)  # uno nuevo en cada respuesta
+        respuesta = await call_next(request)
+        respuesta.headers["Content-Security-Policy"] = _csp(request.state.nonce)
+        respuesta.headers["X-Content-Type-Options"] = "nosniff"
+        respuesta.headers["Referrer-Policy"] = "no-referrer"  # no filtrar URLs locales a las webs de ofertas
+        return respuesta
 
     def leer(ruta: Path) -> str:
         return ruta.read_text(encoding="utf-8") if ruta.exists() else ""
@@ -56,8 +99,13 @@ def crear_app(ruta_db: Path, ruta_cv: Path, ruta_plantilla: Path,
         return texto.strip().lower() in CONFIRMACIONES
 
     def render(request: Request, plantilla: str, status_code: int = 200, **contexto) -> HTMLResponse:
-        return vistas.TemplateResponse(request, plantilla, {"token": app.state.token, **contexto},
-                                       status_code=status_code)
+        with Repositorio(ruta_db) as repo:
+            conteo = repo.contar_por_estado()  # el embudo de la cabecera aparece en todas las páginas
+        aviso = request.query_params.get("aviso", "")
+        base = {"token": app.state.token, "nonce": request.state.nonce, "conteo": conteo,
+                "aviso": aviso if aviso in AVISOS else "", "aviso_texto": AVISOS.get(aviso, ""),
+                "aviso_id": request.query_params.get("id", "")}
+        return vistas.TemplateResponse(request, plantilla, {**base, **contexto}, status_code=status_code)
 
     def obtener(repo: Repositorio, oferta_id: int):
         try:
@@ -86,13 +134,16 @@ def crear_app(ruta_db: Path, ruta_cv: Path, ruta_plantilla: Path,
 
     @app.post("/ofertas/{oferta_id}/descartar")
     def descartar(oferta_id: int, token: str = Form(""), nota: str = Form("")):
-        return _cambiar(oferta_id, "descartada", token, nota)
+        _cambiar(oferta_id, "descartada", token, nota)
+        # El id viaja para el botón "Deshacer" del aviso.
+        return volver(f"/?aviso=descartada&id={oferta_id}")
 
     @app.post("/ofertas/{oferta_id}/restaurar")
     def restaurar(oferta_id: int, token: str = Form("")):
-        return _cambiar(oferta_id, "nueva", token, "restaurada desde la web")
+        _cambiar(oferta_id, "nueva", token, "restaurada desde la web")
+        return volver("/?aviso=restaurada")
 
-    def _cambiar(oferta_id: int, nuevo: str, token: str, nota: str):
+    def _cambiar(oferta_id: int, nuevo: str, token: str, nota: str) -> None:
         verificar_token(token)
         with Repositorio(ruta_db) as repo:
             obtener(repo, oferta_id)
@@ -100,7 +151,6 @@ def crear_app(ruta_db: Path, ruta_cv: Path, ruta_plantilla: Path,
                 repo.cambiar_estado(oferta_id, nuevo, nota=nota)
             except TransicionInvalida as e:
                 raise HTTPException(409, str(e)) from e
-        return volver("/")
 
     @app.get("/ofertas/{oferta_id}/preparar", response_class=HTMLResponse)
     def preparar_form(request: Request, oferta_id: int):
@@ -125,7 +175,7 @@ def crear_app(ruta_db: Path, ruta_cv: Path, ruta_plantilla: Path,
                 repo.guardar_preparacion(oferta_id, texto, "manual", "web", huella)
             except TransicionInvalida as e:
                 raise HTTPException(409, str(e)) from e
-        return volver(f"/ofertas/{oferta_id}")
+        return volver(f"/ofertas/{oferta_id}?aviso=preparada")
 
     @app.get("/ofertas/{oferta_id}/aprobar", response_class=HTMLResponse)
     def aprobar_form(request: Request, oferta_id: int):
@@ -150,7 +200,7 @@ def crear_app(ruta_db: Path, ruta_cv: Path, ruta_plantilla: Path,
                 repo.aprobar(oferta_id, confirmado_por_persona=True, version=version)
             except TransicionInvalida as e:
                 raise HTTPException(409, str(e)) from e
-        return volver(f"/ofertas/{oferta_id}")
+        return volver(f"/ofertas/{oferta_id}?aviso=aprobada")
 
     @app.post("/ofertas/{oferta_id}/enviada")
     def enviada(request: Request, oferta_id: int, token: str = Form(""), confirmacion: str = Form(""),
@@ -167,6 +217,6 @@ def crear_app(ruta_db: Path, ruta_cv: Path, ruta_plantilla: Path,
                 repo.marcar_enviada(oferta_id, nota=nota, confirmado_por_persona=True)
             except AlmacenamientoError as e:
                 raise HTTPException(409, str(e)) from e
-        return volver(f"/ofertas/{oferta_id}")
+        return volver(f"/ofertas/{oferta_id}?aviso=enviada")
 
     return app

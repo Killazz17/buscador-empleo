@@ -1,32 +1,117 @@
 {% extends "base.html" %}
+{% from "_iconos.html" import icono, anillo %}
+{% block estilos %}<style>
+  .saludo h1 { font-size:clamp(26px, 4vw, 34px); line-height:1.15; margin:0 0 6px; letter-spacing:-.02em; }
+  .saludo p { margin:0 0 20px; }
+  .herramientas { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:18px; }
+  .buscador { flex:1; min-width:240px; display:flex; align-items:center; gap:10px; padding:0 14px; min-height:48px;
+              border-radius:14px; background:var(--tarjeta); border:1px solid var(--borde); box-shadow:var(--sombra); }
+  .buscador:focus-within { border-color:var(--secundario); }
+  .buscador input { flex:1; border:0; background:none; font:inherit; color:var(--texto); outline:none; min-height:44px; }
+  .buscador kbd { font:600 12px/1 inherit; padding:4px 7px; border-radius:6px; border:1px solid var(--borde); color:var(--texto-suave); }
+  .filtro { min-height:40px; padding:8px 14px; border-radius:99px; }
+  .filtro[aria-pressed="true"] { background:var(--primario); border-color:var(--primario); color:#fff; }
+  [data-tema="oscuro"] .filtro[aria-pressed="true"] { color:#0B1615; }
+  .rejilla { display:grid; gap:14px; grid-template-columns:repeat(auto-fill, minmax(min(100%, 480px), 1fr)); }
+  .oferta { display:flex; flex-direction:column; gap:12px; transition:transform var(--rapido) var(--curva), box-shadow var(--rapido), border-color var(--rapido); }
+  .oferta:hover { transform:translateY(-3px); border-color:var(--secundario); }
+  .oferta-cabeza { display:flex; gap:14px; align-items:flex-start; }
+  .oferta h2 { font-size:17px; margin:0 0 2px; line-height:1.3; }
+  .oferta h2 a { color:var(--texto); text-decoration:none; } .oferta h2 a:hover { color:var(--primario); }
+  .meta { display:flex; gap:6px 14px; flex-wrap:wrap; font-size:13.5px; color:var(--texto-suave); align-items:center; }
+  .meta span { display:inline-flex; gap:5px; align-items:center; } .meta .ico { width:15px; height:15px; }
+  .oferta-pie { display:flex; gap:8px; flex-wrap:wrap; margin-top:auto; }
+  .oferta-pie form { margin:0; }
+  .vacio { text-align:center; padding:48px 20px; } .vacio svg.grande { width:64px; height:64px; color:var(--secundario); }
+  code { background:var(--info-fondo); padding:2px 7px; border-radius:6px; font-size:14px; }
+  @media (max-width:720px) { .buscador { flex:1 1 100%; } .filtro { flex:1 1 auto; } }
+</style>{% endblock %}
 {% block contenido %}
-<p class="suave">{{ ofertas | length }} oferta(s) en «{{ estado }}». Para traer ofertas nuevas: <code>buscador descargar</code> y <code>buscador filtrar</code>.</p>
+{% set titulos = {'nueva': 'Ofertas por revisar', 'preparada': 'Borradores listos para revisar', 'aprobada': 'Aprobadas: ¡a postular!',
+                  'enviada': 'Postulaciones enviadas', 'descartada': 'Descartadas', 'todas': 'Todas las ofertas'} %}
+<section class="saludo">
+  <h1>{{ titulos.get(estado, 'Ofertas') }}</h1>
+  <p class="suave">{% if estado == 'nueva' %}Ordenadas por afinidad con tu perfil. Ábrelas para leerlas y preparar tu carta.{% else %}{{ ofertas | length }} en esta etapa.{% endif %}</p>
+</section>
+
+{% if ofertas %}
+<div class="herramientas">
+  <label class="buscador">{{ icono('buscar') }}<span class="sr">Buscar</span>
+    <input id="buscar" type="search" placeholder="Buscar por puesto, empresa o tecnología…" autocomplete="off"><kbd aria-hidden="true">/</kbd>
+  </label>
+  <button class="boton filtro" type="button" data-filtro="remoto" aria-pressed="false">Remoto</button>
+  <button class="boton filtro" type="button" data-filtro="junior" aria-pressed="false">Junior / práctica</button>
+  <button class="boton filtro" type="button" data-filtro="claras" aria-pressed="false">Sin dudas de ubicación</button>
+</div>
+<p class="suave" id="resumen" aria-live="polite">{{ ofertas | length }} ofertas</p>
+{% endif %}
+
+<div class="rejilla">
 {% for g in ofertas %}
-<div class="tarjeta">
-  <div class="fila">
-    <div>
-      <span class="puntos">{{ '%+d' % g.puntuacion }}</span>
-      <a href="/ofertas/{{ g.id }}"><strong>{{ g.oferta.titulo | s }}</strong></a>
-      <span class="suave">— {{ g.oferta.empresa | s }} · {{ g.oferta.ubicacion | s }} · #{{ g.id }}</span>
+  {% set o = g.oferta %}
+  {% set junior = g.motivos | select('match', 'nivel .*\\+') | list %}
+  {% set dudosa = g.motivos | select('match', 'verifica') | list %}
+  <article class="tarjeta oferta entra" style="--i: {{ [loop.index0, 12] | min }}"
+           data-texto="{{ (o.titulo ~ ' ' ~ o.empresa ~ ' ' ~ o.ubicacion ~ ' ' ~ (g.motivos | join(' '))) | lower }}"
+           data-remoto="{{ 1 if o.remoto else 0 }}" data-junior="{{ 1 if junior else 0 }}" data-claras="{{ 0 if dudosa else 1 }}">
+    <div class="oferta-cabeza">
+      {{ anillo(g.puntuacion) }}
+      <div>
+        <h2><a href="/ofertas/{{ g.id }}">{{ o.titulo | s }}</a></h2>
+        <div class="meta">
+          <span>{{ o.empresa | s or 'Empresa sin nombre' }}</span>
+          <span>{{ icono('mapa') }}{{ o.ubicacion | s or '—' }}</span>
+          <span>#{{ g.id }}</span>
+        </div>
+      </div>
     </div>
-    <div>
-      {% if g.oferta.url | url_segura %}<a class="boton" href="{{ g.oferta.url | url_segura }}" target="_blank" rel="noopener noreferrer">Ver oferta ↗</a>{% endif %}
+    <div class="chips">{% for m in g.motivos[:7] %}<span class="chip chip-{{ m | tipo_motivo }}">{{ m }}</span>{% endfor %}
+      {% if g.motivos | length > 7 %}<span class="chip chip-info">+{{ g.motivos | length - 7 }}</span>{% endif %}</div>
+    <div class="oferta-pie">
+      <a class="boton boton-teal" href="/ofertas/{{ g.id }}">{{ icono('pluma') }} {{ 'Ver y preparar' if g.estado == 'nueva' else 'Abrir' }}</a>
+      {% if o.url | url_segura %}<a class="boton" href="{{ o.url | url_segura }}" target="_blank" rel="noopener noreferrer">{{ icono('externo') }} Oferta original</a>{% endif %}
       {% if g.estado == 'nueva' %}
-      <form class="enlinea" method="post" action="/ofertas/{{ g.id }}/descartar">
+      <form method="post" action="/ofertas/{{ g.id }}/descartar">
         <input type="hidden" name="token" value="{{ token }}">
-        <button class="peligro" type="submit">Descartar</button>
+        <button class="boton boton-peligro" type="submit" aria-label="Descartar {{ o.titulo | s }}">{{ icono('basura') }} Descartar</button>
       </form>
       {% elif g.estado == 'descartada' %}
-      <form class="enlinea" method="post" action="/ofertas/{{ g.id }}/restaurar">
+      <form method="post" action="/ofertas/{{ g.id }}/restaurar">
         <input type="hidden" name="token" value="{{ token }}">
-        <button type="submit">Restaurar</button>
+        <button class="boton" type="submit">{{ icono('deshacer') }} Restaurar</button>
       </form>
       {% endif %}
     </div>
-  </div>
-  <div class="motivos">{{ g.motivos | join(', ') }}</div>
-</div>
+  </article>
 {% else %}
-<div class="tarjeta">No hay ofertas en este estado.</div>
+  <div class="tarjeta vacio">
+    {{ icono('bandeja', 'grande') }}
+    <h2>Nada por aquí todavía</h2>
+    <p class="suave">Para traer ofertas nuevas, abre PowerShell y escribe:<br><code>buscador descargar</code> y luego <code>buscador filtrar</code></p>
+  </div>
 {% endfor %}
+</div>
+{% endblock %}
+{% block script %}
+  // Búsqueda instantánea + filtros rápidos (todo en el navegador, sin recargar).
+  const tarjetas = [...document.querySelectorAll(".oferta")], buscar = document.getElementById("buscar"),
+        resumen = document.getElementById("resumen"), filtros = [...document.querySelectorAll("[data-filtro]")];
+  const aplicar = () => {
+    const q = (buscar?.value || "").trim().toLowerCase(), activos = filtros.filter(f => f.getAttribute("aria-pressed") === "true");
+    let visibles = 0;
+    tarjetas.forEach(t => {
+      const ok = (!q || t.dataset.texto.includes(q)) && activos.every(f => t.dataset[f.dataset.filtro] === "1");
+      t.hidden = !ok; if (ok) visibles++;
+    });
+    if (resumen) resumen.textContent = visibles === tarjetas.length ? `${visibles} ofertas` : `${visibles} de ${tarjetas.length} ofertas`;
+  };
+  buscar?.addEventListener("input", aplicar);
+  filtros.forEach(f => f.addEventListener("click", () => {
+    f.setAttribute("aria-pressed", f.getAttribute("aria-pressed") === "true" ? "false" : "true"); aplicar();
+  }));
+  document.addEventListener("keydown", e => {
+    if (e.key === "/" && document.activeElement !== buscar && !/input|textarea/i.test(document.activeElement.tagName)) {
+      e.preventDefault(); buscar?.focus();
+    }
+  });
 {% endblock %}

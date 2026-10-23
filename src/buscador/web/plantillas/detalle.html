@@ -1,54 +1,119 @@
 {% extends "base.html" %}
-{% block titulo %}#{{ g.id }} · {{ g.oferta.titulo | s }}{% endblock %}
+{% from "_iconos.html" import icono, anillo %}
+{% block titulo %}{{ g.oferta.titulo | s }} · Tu mesa de postulaciones{% endblock %}
+{% block estilos %}<style>
+  .volver { display:inline-flex; gap:6px; align-items:center; margin-bottom:14px; text-decoration:none; font-weight:600; }
+  .cabeza { display:flex; gap:20px; align-items:center; flex-wrap:wrap; }
+  .cabeza h1 { margin:0; font-size:clamp(22px, 3.4vw, 30px); line-height:1.2; letter-spacing:-.02em; }
+  .meta { display:flex; gap:6px 16px; flex-wrap:wrap; color:var(--texto-suave); margin-top:6px; }
+  .disposicion { display:grid; gap:16px; grid-template-columns:minmax(0, 1fr) 340px; margin-top:16px; align-items:start; }
+  @media (max-width:900px) { .disposicion { grid-template-columns:1fr; } }
+  .pasos { list-style:none; margin:0 0 16px; padding:0; display:flex; flex-direction:column; gap:10px; }
+  .pasos li { display:flex; gap:12px; align-items:center; color:var(--texto-suave); font-weight:600; }
+  .pasos .punto { width:28px; height:28px; border-radius:99px; display:grid; place-items:center; border:2px solid var(--borde); flex:none; }
+  .pasos li.hecho { color:var(--texto); } .pasos li.hecho .punto { background:var(--primario); border-color:var(--primario); color:#fff; }
+  .pasos li.actual { color:var(--primario); } .pasos li.actual .punto { border-color:var(--primario); box-shadow:0 0 0 5px var(--primario-suave); }
+  .pasos .punto .ico { width:15px; height:15px; }
+  .acciones { display:flex; flex-direction:column; gap:10px; }
+  .papel { position:relative; background:var(--papel); border:1px solid var(--borde); border-radius:12px; padding:28px 30px;
+           font:16.5px/1.7 Georgia, "Times New Roman", serif; white-space:pre-wrap; box-shadow:var(--sombra); }
+  .sello { position:absolute; top:18px; right:18px; padding:6px 14px; border:3px solid var(--pos); color:var(--pos); border-radius:10px;
+           font:800 15px/1 "Plus Jakarta Sans", sans-serif; letter-spacing:.14em; transform:rotate(-8deg); opacity:.85; }
+  .papel:has(.sello) { padding-top:68px; } /* el sello no tapa el saludo de la carta */
+  [data-aviso="aprobada"] .sello { animation:sellar 700ms cubic-bezier(.3,1.6,.5,1) both 150ms; }
+  @keyframes sellar { from { transform:rotate(-8deg) scale(2.6); opacity:0; } }
+  .descripcion { white-space:pre-wrap; max-height:420px; overflow:auto; color:var(--texto-suave); }
+  details summary { cursor:pointer; font-weight:700; min-height:44px; display:flex; align-items:center; }
+  .linea { border-left:2px solid var(--borde); margin-left:6px; padding-left:16px; display:flex; flex-direction:column; gap:10px; }
+  .linea div { position:relative; font-size:14px; } .linea div::before { content:""; position:absolute; left:-22px; top:7px; width:10px; height:10px;
+               border-radius:99px; background:var(--secundario); }
+  .alerta { background:var(--neg-fondo); color:var(--neg); padding:12px 14px; border-radius:12px; font-weight:600; display:flex; gap:8px; }
+  .campo { display:flex; flex-direction:column; gap:6px; } .campo input { min-height:44px; padding:10px 12px; border-radius:10px;
+           border:1px solid var(--borde); background:var(--fondo); color:var(--texto); font:inherit; }
+</style>{% endblock %}
 {% block contenido %}
-<div class="tarjeta">
-  <div class="fila">
-    <h2 style="margin:0">{{ g.oferta.titulo | s }}</h2>
-    <span class="estado">{{ g.estado }}</span>
+{% set o = g.oferta %}
+{% set orden = ['nueva', 'preparada', 'aprobada', 'enviada'] %}
+{% set i_actual = orden.index(g.estado) if g.estado in orden else -1 %}
+<a class="volver" href="/?estado={{ g.estado }}">{{ icono('flecha') }} Volver</a>
+<section class="tarjeta entra">
+  <div class="cabeza">
+    {{ anillo(g.puntuacion, true) }}
+    <div style="flex:1; min-width:240px">
+      <span class="etiqueta-estado">{{ g.estado }}</span>
+      <h1 style="margin-top:8px">{{ o.titulo | s }}</h1>
+      <div class="meta"><span>{{ o.empresa | s or 'Empresa sin nombre' }}</span><span>{{ o.ubicacion | s or '—' }}</span>
+        <span>{{ 'Remoto' if o.remoto else 'Presencial / híbrido' }}</span><span>#{{ g.id }}</span></div>
+    </div>
+    {% if o.url | url_segura %}<a class="boton" href="{{ o.url | url_segura }}" target="_blank" rel="noopener noreferrer">{{ icono('externo') }} Oferta original</a>{% endif %}
   </div>
-  <p class="suave">{{ g.oferta.empresa | s }} · {{ g.oferta.ubicacion | s }} · {{ 'remoto' if g.oferta.remoto else 'presencial/híbrido' }} · #{{ g.id }}</p>
-  <p><span class="puntos">{{ '%+d' % g.puntuacion }}</span> <span class="motivos">{{ g.motivos | join(', ') }}</span></p>
-  {% if g.oferta.url | url_segura %}<p><a class="boton" href="{{ g.oferta.url | url_segura }}" target="_blank" rel="noopener noreferrer">Abrir la oferta original ↗</a></p>{% endif %}
-  {% if integra == false %}<p class="error">⚠ ATENCIÓN: el texto aprobado no coincide con su huella: la base de datos fue manipulada.</p>{% endif %}
-</div>
+  <div class="chips" style="margin-top:14px">{% for m in g.motivos %}<span class="chip chip-{{ m | tipo_motivo }}">{{ m }}</span>{% endfor %}</div>
+</section>
 
-<div class="tarjeta">
-  <h3>Siguiente paso</h3>
-  {% if g.estado in ('nueva', 'preparada') %}
-    <a class="boton primario" href="/ofertas/{{ g.id }}/preparar">✍ {{ 'Preparar otra versión' if prep else 'Preparar carta' }}</a>
-  {% endif %}
-  {% if g.estado == 'preparada' %}
-    <a class="boton" href="/ofertas/{{ g.id }}/aprobar">✔ Revisar y aprobar</a>
-  {% endif %}
-  {% if g.estado == 'aprobada' %}
-    <p>Aprobada. <strong>Postula tú</strong> en la web de la empresa (botón «Abrir la oferta original») y después regístralo:</p>
-    <form method="post" action="/ofertas/{{ g.id }}/enviada">
-      <input type="hidden" name="token" value="{{ token }}">
-      <p><input type="text" name="nota" placeholder="Nota (ej. formulario web)"></p>
-      <p><label>Escribe <strong>si</strong> para confirmar que TÚ ya la enviaste:
-        <input type="text" name="confirmacion" autocomplete="off" style="width:80px"></label>
-        <button class="primario" type="submit">Marcar como enviada</button></p>
-    </form>
-  {% endif %}
-  {% if g.estado == 'enviada' %}<p>✅ Postulación enviada. ¡Suerte!</p>{% endif %}
-</div>
+{% if integra == false %}<p class="alerta" style="margin-top:16px">{{ icono('aviso') }} ATENCIÓN: el texto aprobado no coincide con su huella: la base de datos fue manipulada.</p>{% endif %}
 
-{% if prep %}
-<div class="tarjeta">
-  <h3>Borrador v{{ prep.version }} <span class="suave">({{ prep.proveedor }}/{{ prep.modelo }})</span></h3>
-  <pre class="carta">{{ prep.texto | s }}</pre>
-</div>
-{% endif %}
+<div class="disposicion">
+  <div style="display:flex; flex-direction:column; gap:16px">
+    {% if prep %}
+    <section class="entra" style="--i:1">
+      <h2 style="margin:0 0 10px; font-size:18px">Tu carta <span class="suave" style="font-weight:500">· versión {{ prep.version }}</span></h2>
+      <div class="papel">{% if g.estado in ('aprobada', 'enviada') %}<span class="sello" aria-hidden="true">APROBADA</span>{% endif %}{{ prep.texto | parrafos | s }}</div>
+    </section>
+    {% endif %}
+    <details class="tarjeta entra" style="--i:2" {{ 'open' if not prep }}>
+      <summary>Descripción de la oferta</summary>
+      <div class="descripcion">{{ descripcion }}</div>
+    </details>
+  </div>
 
-<div class="tarjeta">
-  <h3>Descripción de la oferta</h3>
-  <div class="descripcion">{{ descripcion }}</div>
+  <aside style="display:flex; flex-direction:column; gap:16px">
+    <section class="tarjeta entra" style="--i:1">
+      <h2 style="margin:0 0 14px; font-size:18px">Tu progreso</h2>
+      <ol class="pasos">
+        {% for clave, nombre, ico in [('nueva', 'Revisar la oferta', 'buscar'), ('preparada', 'Carta preparada', 'pluma'), ('aprobada', 'Aprobada por ti', 'check'), ('enviada', 'Postulación enviada', 'enviar')] %}
+        <li class="{{ 'hecho' if loop.index0 < i_actual or (g.estado == 'enviada') else ('actual' if loop.index0 == i_actual else '') }}">
+          <span class="punto">{{ icono(ico) }}</span>{{ nombre }}</li>
+        {% endfor %}
+      </ol>
+      <div class="acciones">
+        {% if g.estado in ('nueva', 'preparada') %}
+          <a class="boton {{ 'boton-primario' if g.estado == 'nueva' else '' }}" href="/ofertas/{{ g.id }}/preparar">{{ icono('pluma') }} {{ 'Preparar otra versión' if prep else 'Preparar mi carta' }}</a>
+        {% endif %}
+        {% if g.estado == 'preparada' %}
+          <a class="boton boton-primario" href="/ofertas/{{ g.id }}/aprobar">{{ icono('check') }} Revisar y aprobar</a>
+        {% endif %}
+        {% if g.estado == 'aprobada' %}
+          <p style="margin:0">¡Lista! <strong>Postula tú</strong> en la web de la empresa y después regístralo aquí:</p>
+          <form method="post" action="/ofertas/{{ g.id }}/enviada" class="acciones">
+            <input type="hidden" name="token" value="{{ token }}">
+            <label class="campo"><span class="suave">Nota (opcional)</span><input type="text" name="nota" placeholder="ej. formulario web"></label>
+            <label class="campo"><span>Escribe <strong>si</strong> para confirmar que ya la enviaste</span>
+              <input type="text" name="confirmacion" autocomplete="off" data-confirmar="enviar"></label>
+            <button class="boton boton-primario" type="submit" data-boton="enviar" disabled>{{ icono('enviar') }} Marcar como enviada</button>
+          </form>
+        {% endif %}
+        {% if g.estado == 'enviada' %}<p style="margin:0; font-weight:700; color:var(--pos)">Postulación enviada. ¡Mucha suerte!</p>{% endif %}
+        {% if g.estado == 'nueva' %}
+          <form method="post" action="/ofertas/{{ g.id }}/descartar">
+            <input type="hidden" name="token" value="{{ token }}">
+            <button class="boton boton-peligro" type="submit" style="width:100%">{{ icono('basura') }} No me interesa</button>
+          </form>
+        {% endif %}
+      </div>
+    </section>
+    {% if historial %}
+    <section class="tarjeta entra" style="--i:2">
+      <h2 style="margin:0 0 12px; font-size:18px">Historial</h2>
+      <div class="linea">{% for h in historial %}<div><strong>{{ h.de }} → {{ h.a }}</strong><br><span class="suave">{{ h.fecha[:16] | replace('T', ' ') }}{% if h.nota %} · {{ h.nota }}{% endif %}</span></div>{% endfor %}</div>
+    </section>
+    {% endif %}
+  </aside>
 </div>
-
-{% if historial %}
-<div class="tarjeta">
-  <h3>Historial</h3>
-  {% for h in historial %}<div class="suave">{{ h.fecha }} · {{ h.de }} → {{ h.a }}{% if h.nota %} ({{ h.nota }}){% endif %}</div>{% endfor %}
-</div>
-{% endif %}
+{% endblock %}
+{% block script %}
+  // El botón se habilita al escribir "si" (el servidor lo vuelve a comprobar igualmente).
+  document.querySelectorAll("[data-confirmar]").forEach(campo => {
+    const boton = document.querySelector(`[data-boton="${campo.dataset.confirmar}"]`);
+    campo.addEventListener("input", () => { boton.disabled = !["si", "sí"].includes(campo.value.trim().toLowerCase()); });
+  });
 {% endblock %}

@@ -125,6 +125,12 @@ class TestListar(BaseRepo):
         with self.assertRaises(AlmacenamientoError):
             self.repo.listar(estado="inventado")
 
+    def test_contar_por_estado(self):
+        self.repo.cambiar_estado(self.un_id("alto"), "descartada", ahora=HOY)
+        conteo = self.repo.contar_por_estado()
+        self.assertEqual((conteo["nueva"], conteo["descartada"], conteo["enviada"]), (2, 1, 0))
+        self.assertEqual(set(conteo), set(ESTADOS))
+
     def test_buscar_id_por_fuente(self):
         self.assertEqual(self.repo.buscar_id("test", "medio"), self.un_id("medio"))
         self.assertIsNone(self.repo.buscar_id("test", "no-existe"))

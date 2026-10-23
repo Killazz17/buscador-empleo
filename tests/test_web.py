@@ -5,6 +5,7 @@ XSS (autoescape), CSRF (token por arranque), DNS rebinding (solo localhost) y co
 """
 
 import argparse
+import re
 import sqlite3
 import tempfile
 import unittest
@@ -162,6 +163,39 @@ class TestAprobarYEnviar(BaseWeb):
         self.aprobar()
         self.assertEqual(self.post(f"/ofertas/{self.ids['a']}/enviada", confirmacion="si", nota="web").status_code, 303)
         self.assertEqual(self.estado(), "enviada")
+
+
+class TestRediseno(BaseWeb):
+    """Interfaz amigable: embudo con contadores, avisos tras cada acción y CSP con nonce."""
+
+    def test_embudo_con_contadores_por_etapa(self):
+        self.repo.cambiar_estado(self.ids["b"], "descartada", ahora=HOY)
+        html = self.web.get("/").text
+        for estado, esperado in (("nueva", "1"), ("descartada", "1"), ("enviada", "0")):
+            with self.subTest(estado=estado):
+                m = re.search(rf'id="etapa-{estado}".*?data-countup="(\d+)"', html, re.S)
+                self.assertIsNotNone(m, f"falta la etapa {estado}")
+                self.assertEqual(m.group(1), esperado)
+
+    def test_acciones_redirigen_con_aviso(self):
+        r = self.post(f"/ofertas/{self.ids['a']}/descartar")
+        self.assertEqual(r.headers["location"], f"/?aviso=descartada&id={self.ids['a']}")
+        self.assertIn("Oferta descartada", self.web.get(r.headers["location"]).text)
+
+    def test_aviso_desconocido_no_se_refleja(self):
+        r = self.web.get("/?aviso=<script>alert(1)</script>")
+        self.assertNotIn("alert(1)", r.text)
+
+    def test_csp_con_nonce_en_cada_script(self):
+        r = self.web.get("/")
+        csp = r.headers["content-security-policy"]
+        nonce = re.search(r"'nonce-([^']+)'", csp).group(1)
+        self.assertIn("frame-ancestors 'none'", csp)
+        scripts = re.findall(r"<script([^>]*)>", r.text)
+        self.assertTrue(scripts)
+        for atributos in scripts:
+            self.assertIn(f'nonce="{nonce}"', atributos)
+        self.assertNotEqual(nonce, re.search(r"'nonce-([^']+)'", self.web.get("/").headers["content-security-policy"]).group(1))
 
 
 class TestComandoWeb(unittest.TestCase):

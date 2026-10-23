@@ -1,18 +1,39 @@
 {% extends "base.html" %}
-{% block titulo %}Aprobar · {{ g.oferta.titulo | s }}{% endblock %}
+{% from "_iconos.html" import icono %}
+{% block titulo %}Aprobar carta · {{ g.oferta.titulo | s }}{% endblock %}
+{% block estilos %}<style>
+  .volver { display:inline-flex; gap:6px; align-items:center; margin-bottom:14px; text-decoration:none; font-weight:600; }
+  h1 { margin:0 0 4px; font-size:clamp(22px, 3.4vw, 30px); letter-spacing:-.02em; }
+  .papel { background:var(--papel); border:1px solid var(--borde); border-radius:12px; padding:30px 34px; margin:18px 0;
+           font:16.5px/1.75 Georgia, "Times New Roman", serif; white-space:pre-wrap; box-shadow:var(--sombra); }
+  .alerta { background:var(--aviso-fondo); color:var(--aviso); padding:12px 14px; border-radius:12px; font-weight:600;
+            display:flex; gap:10px; align-items:flex-start; margin:8px 0; }
+  .confirmar { display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; }
+  .confirmar label { display:flex; flex-direction:column; gap:6px; }
+  .confirmar input { width:120px; min-height:44px; padding:10px 12px; border-radius:10px; border:1px solid var(--borde);
+                     background:var(--fondo); color:var(--texto); font:inherit; font-weight:700; }
+  .confirmar input:focus { border-color:var(--secundario); outline:none; box-shadow:0 0 0 4px var(--primario-suave); }
+</style>{% endblock %}
 {% block contenido %}
-<div class="tarjeta">
-  <h2 style="margin-top:0">Aprobar carta v{{ prep.version }}: {{ g.oferta.titulo | s }}</h2>
-  <p class="suave">{{ g.oferta.empresa | s }} · Lee la carta completa: es tu firma.</p>
-  {% for alerta in alertas %}<p class="alerta">⚠ ATENCIÓN: el borrador {{ alerta | s }}</p>{% endfor %}
-  <pre class="carta">{{ prep.texto | s }}</pre>
-  <form method="post" action="/ofertas/{{ g.id }}/aprobar">
-    <input type="hidden" name="token" value="{{ token }}">
-    <input type="hidden" name="version" value="{{ prep.version }}">
-    <p><label>Escribe <strong>si</strong> para aprobar exactamente este texto:
-      <input type="text" name="confirmacion" autocomplete="off" style="width:80px"></label>
-      <button class="primario" type="submit">✔ Aprobar</button>
-      <a class="boton" href="/ofertas/{{ g.id }}">Volver</a></p>
-  </form>
-</div>
+<a class="volver" href="/ofertas/{{ g.id }}">{{ icono('flecha') }} Volver a la oferta</a>
+<h1>¿Apruebas esta carta?</h1>
+<p class="suave">{{ g.oferta.titulo | s }} · {{ g.oferta.empresa | s }} · versión {{ prep.version }}. Léela entera: va con tu nombre.</p>
+
+{% for alerta in alertas %}<p class="alerta">{{ icono('aviso') }}<span>ATENCIÓN: el borrador {{ alerta | s }}</span></p>{% endfor %}
+
+<div class="papel entra">{{ prep.texto | s }}</div>
+
+<form class="tarjeta confirmar entra" style="--i:1" method="post" action="/ofertas/{{ g.id }}/aprobar">
+  <input type="hidden" name="token" value="{{ token }}">
+  <input type="hidden" name="version" value="{{ prep.version }}">
+  <label><span>Escribe <strong>si</strong> para aprobar exactamente este texto</span>
+    <input type="text" name="confirmacion" autocomplete="off" id="confirmacion" aria-describedby="nota-aprobar"></label>
+  <button class="boton boton-primario" type="submit" id="aprobar" disabled>{{ icono('check') }} Aprobar carta</button>
+  <a class="boton" href="/ofertas/{{ g.id }}/preparar">{{ icono('pluma') }} Prefiero otra versión</a>
+  <p class="suave" id="nota-aprobar" style="flex-basis:100%; margin:0">Aprobar no envía nada: la postulación la haces tú en la web de la empresa.</p>
+</form>
+{% endblock %}
+{% block script %}
+  const campo = document.getElementById("confirmacion"), boton = document.getElementById("aprobar");
+  campo?.addEventListener("input", () => { boton.disabled = !["si", "sí"].includes(campo.value.trim().toLowerCase()); });
 {% endblock %}

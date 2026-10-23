@@ -81,6 +81,9 @@ Fuentes → ingesta → normalización → deduplicación → filtro/puntuación
 - `src/buscador/web/`: interfaz web local (FastAPI + Jinja2), **otro adaptador sobre el mismo núcleo**: no
   duplica lógica. Se arranca con `buscador web` (solo en 127.0.0.1). Tiene token CSRF por arranque,
   `TrustedHostMiddleware`, autoescape, `url_segura` (solo http/https) y confirmación escrita para aprobar o enviar.
+  CSP con nonce por respuesta (`_csp`): todo `<script>` de las plantillas debe llevar `nonce="{{ nonce }}"`, sin
+  `onclick=` en línea ni JS externo. Los avisos (`?aviso=`) salen de la lista cerrada `AVISOS`, nunca de la URL.
+  Plantillas en `web/plantillas/` (`base.html` tiene los tokens de color, el embudo con `contar_por_estado` y los efectos).
   Claude Code nunca llama a los endpoints `/aprobar` ni `/enviada` (hay reglas `deny`).
 - `data/raw/`: respuestas crudas de cada API, para poder reprocesar sin volver a pedir.
 - `data/ofertas_<fuente>_<fecha>[_<búsqueda>].json` → `data/filtradas_<fecha>.json` (ranking con puntuación y motivos).
