@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block titulo %}Buscador de empleo{% endblock %}</title>
+  <style>
+    :root { --fondo:#f6f7f9; --tarjeta:#fff; --texto:#1d2330; --suave:#5b6474; --borde:#dde1e7;
+            --acento:#2f6fed; --bien:#1f8a4c; --mal:#c0392b; --aviso:#b7791f; }
+    @media (prefers-color-scheme: dark) {
+      :root { --fondo:#14171c; --tarjeta:#1d2129; --texto:#e7eaf0; --suave:#9aa3b2; --borde:#2d333d; }
+    }
+    * { box-sizing:border-box; }
+    body { margin:0; font:15px/1.5 system-ui, sans-serif; background:var(--fondo); color:var(--texto); }
+    header { background:var(--tarjeta); border-bottom:1px solid var(--borde); padding:12px 20px;
+             display:flex; gap:16px; align-items:center; flex-wrap:wrap; }
+    header a { color:var(--suave); text-decoration:none; } header a.activo { color:var(--acento); font-weight:600; }
+    main { max-width:980px; margin:0 auto; padding:20px 16px; }
+    .tarjeta { background:var(--tarjeta); border:1px solid var(--borde); border-radius:10px; padding:16px; margin-bottom:12px; }
+    .fila { display:flex; gap:12px; align-items:baseline; justify-content:space-between; flex-wrap:wrap; }
+    .puntos { font-weight:700; color:var(--acento); min-width:48px; }
+    .suave { color:var(--suave); font-size:13px; }
+    .motivos { color:var(--suave); font-size:12px; margin-top:4px; }
+    .estado { font-size:12px; padding:2px 8px; border-radius:99px; border:1px solid var(--borde); }
+    a { color:var(--acento); }
+    button, .boton { font:inherit; cursor:pointer; border-radius:8px; border:1px solid var(--borde);
+                     background:var(--tarjeta); color:var(--texto); padding:6px 12px; text-decoration:none; display:inline-block; }
+    .primario { background:var(--acento); color:#fff; border-color:var(--acento); }
+    .peligro { color:var(--mal); }
+    textarea, input[type=text] { width:100%; font:inherit; padding:8px; border-radius:8px;
+                                 border:1px solid var(--borde); background:var(--fondo); color:var(--texto); }
+    textarea { min-height:220px; font-family:ui-monospace, monospace; font-size:13px; }
+    pre.carta { white-space:pre-wrap; font-family:Georgia, serif; font-size:15px; background:var(--fondo);
+                padding:16px; border-radius:8px; border:1px solid var(--borde); }
+    .descripcion { white-space:pre-wrap; max-height:360px; overflow:auto; }
+    .alerta { color:var(--aviso); font-weight:600; } .error { color:var(--mal); font-weight:600; }
+    form.enlinea { display:inline; }
+    ol.pasos li { margin-bottom:8px; }
+  </style>
+</head>
+<body>
+<header>
+  <strong>🔎 Buscador de empleo</strong>
+  {% set e = estado | default('') %}
+  <a href="/?estado=nueva" class="{{ 'activo' if e == 'nueva' }}">Pendientes</a>
+  <a href="/?estado=preparada" class="{{ 'activo' if e == 'preparada' }}">Preparadas</a>
+  <a href="/?estado=aprobada" class="{{ 'activo' if e == 'aprobada' }}">Aprobadas</a>
+  <a href="/?estado=enviada" class="{{ 'activo' if e == 'enviada' }}">Enviadas</a>
+  <a href="/?estado=descartada" class="{{ 'activo' if e == 'descartada' }}">Descartadas</a>
+</header>
+<main>
+{% block contenido %}{% endblock %}
+</main>
+</body>
+</html>

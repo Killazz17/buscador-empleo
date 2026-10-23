@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block contenido %}
+<p class="suave">{{ ofertas | length }} oferta(s) en «{{ estado }}». Para traer ofertas nuevas: <code>buscador descargar</code> y <code>buscador filtrar</code>.</p>
+{% for g in ofertas %}
+<div class="tarjeta">
+  <div class="fila">
+    <div>
+      <span class="puntos">{{ '%+d' % g.puntuacion }}</span>
+      <a href="/ofertas/{{ g.id }}"><strong>{{ g.oferta.titulo | s }}</strong></a>
+      <span class="suave">— {{ g.oferta.empresa | s }} · {{ g.oferta.ubicacion | s }} · #{{ g.id }}</span>
+    </div>
+    <div>
+      {% if g.oferta.url | url_segura %}<a class="boton" href="{{ g.oferta.url | url_segura }}" target="_blank" rel="noopener noreferrer">Ver oferta ↗</a>{% endif %}
+      {% if g.estado == 'nueva' %}
+      <form class="enlinea" method="post" action="/ofertas/{{ g.id }}/descartar">
+        <input type="hidden" name="token" value="{{ token }}">
+        <button class="peligro" type="submit">Descartar</button>
+      </form>
+      {% elif g.estado == 'descartada' %}
+      <form class="enlinea" method="post" action="/ofertas/{{ g.id }}/restaurar">
+        <input type="hidden" name="token" value="{{ token }}">
+        <button type="submit">Restaurar</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+  <div class="motivos">{{ g.motivos | join(', ') }}</div>
+</div>
+{% else %}
+<div class="tarjeta">No hay ofertas en este estado.</div>
+{% endfor %}
+{% endblock %}

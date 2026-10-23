@@ -15,6 +15,13 @@ dependencies = []  # el núcleo solo usa la librería estándar
 [project.optional-dependencies]
 # Solo si usas proveedor = "claude": python -m pip install -e ".[claude]"
 claude = ["anthropic==2.2.0"]
+# Interfaz web local (`buscador web`): python -m pip install -e ".[web]"
+web = ["fastapi==0.162.0", "uvicorn==0.54.0", "jinja2==3.1.6", "python-multipart==0.0.32"]
+# Para ejecutar los tests de la web y medir cobertura
+dev = ["httpx==0.28.1", "coverage"]
+
+[tool.setuptools.package-data]
+buscador = ["web/plantillas/*.html"]
 
 [project.scripts]
 buscador = "buscador.cli:main"

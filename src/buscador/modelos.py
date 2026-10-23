@@ -17,6 +17,20 @@ def sin_controles(valor: str) -> str:
     return _CONTROLES.sub("", valor)
 
 
+def normalizar_pegado(texto_pegado: str) -> str:
+    """Texto que una persona pegó desde el navegador/Bloc de notas: saltos de Windows y líneas en blanco de más.
+
+    "\\r\\r\\n" (cada salto contado doble) → "\\n"; como mucho una línea en blanco entre párrafos.
+    """
+    limpio = texto_pegado.replace("\r\n", "\n").replace("\r", "")
+    return re.sub(r"\n{3,}", "\n\n", limpio).strip()
+
+
+def url_segura(url: str) -> str:
+    """Solo http(s) puede convertirse en enlace: un href="javascript:..." ejecutaría código al hacer clic."""
+    return url if url.lower().startswith(("https://", "http://")) else ""
+
+
 def texto(valor) -> str:
     """None → "", cualquier otra cosa → str SIN caracteres de control.
 

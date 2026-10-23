@@ -13,6 +13,7 @@
 
 import argparse
 import hashlib
+import webbrowser
 import json
 import os
 import re
@@ -454,6 +455,24 @@ def comando_ver(args: argparse.Namespace) -> int:
     return 0
 
 
+def comando_web(args: argparse.Namespace) -> int:
+    """Arranca la interfaz web SOLO en 127.0.0.1 (no accesible desde otros equipos de la red)."""
+    try:
+        import uvicorn
+
+        from buscador.web import crear_app
+    except ImportError:
+        print('Falta la interfaz web. Instálala con: python -m pip install -e ".[web]"', file=sys.stderr)
+        return 1
+    url = f"http://127.0.0.1:{args.puerto}/"
+    print(f"Interfaz en {url}  (déjala abierta mientras la uses; Ctrl+C para cerrarla)")
+    if not args.sin_navegador:
+        webbrowser.open(url)
+    uvicorn.run(crear_app(ruta_db(), RUTA_CV, RUTA_PLANTILLA), host="127.0.0.1", port=args.puerto,
+                log_level="warning")
+    return 0
+
+
 def fecha_iso(valor: str) -> str:
     """Tipo de argparse: valida AAAA-MM-DD. Evita que algo como "*" se cuele en el patrón glob."""
     try:
@@ -510,6 +529,11 @@ def main() -> None:
     p_enviada.add_argument("id", type=int, metavar="ID")
     p_enviada.add_argument("--nota", help="Por dónde la enviaste, ej. 'formulario web'")
     p_enviada.set_defaults(funcion=comando_enviada)
+
+    p_web = subcomandos.add_parser("web", help="Abre la interfaz web local en tu navegador")
+    p_web.add_argument("--puerto", type=int, default=8765, help="Puerto local (por defecto 8765)")
+    p_web.add_argument("--sin-navegador", action="store_true", help="No abrir el navegador automáticamente")
+    p_web.set_defaults(funcion=comando_web)
 
     args = parser.parse_args()
     try:

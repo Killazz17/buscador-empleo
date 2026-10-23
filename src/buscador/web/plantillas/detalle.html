@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block titulo %}#{{ g.id }} · {{ g.oferta.titulo | s }}{% endblock %}
+{% block contenido %}
+<div class="tarjeta">
+  <div class="fila">
+    <h2 style="margin:0">{{ g.oferta.titulo | s }}</h2>
+    <span class="estado">{{ g.estado }}</span>
+  </div>
+  <p class="suave">{{ g.oferta.empresa | s }} · {{ g.oferta.ubicacion | s }} · {{ 'remoto' if g.oferta.remoto else 'presencial/híbrido' }} · #{{ g.id }}</p>
+  <p><span class="puntos">{{ '%+d' % g.puntuacion }}</span> <span class="motivos">{{ g.motivos | join(', ') }}</span></p>
+  {% if g.oferta.url | url_segura %}<p><a class="boton" href="{{ g.oferta.url | url_segura }}" target="_blank" rel="noopener noreferrer">Abrir la oferta original ↗</a></p>{% endif %}
+  {% if integra == false %}<p class="error">⚠ ATENCIÓN: el texto aprobado no coincide con su huella: la base de datos fue manipulada.</p>{% endif %}
+</div>
+
+<div class="tarjeta">
+  <h3>Siguiente paso</h3>
+  {% if g.estado in ('nueva', 'preparada') %}
+    <a class="boton primario" href="/ofertas/{{ g.id }}/preparar">✍ {{ 'Preparar otra versión' if prep else 'Preparar carta' }}</a>
+  {% endif %}
+  {% if g.estado == 'preparada' %}
+    <a class="boton" href="/ofertas/{{ g.id }}/aprobar">✔ Revisar y aprobar</a>
+  {% endif %}
+  {% if g.estado == 'aprobada' %}
+    <p>Aprobada. <strong>Postula tú</strong> en la web de la empresa (botón «Abrir la oferta original») y después regístralo:</p>
+    <form method="post" action="/ofertas/{{ g.id }}/enviada">
+      <input type="hidden" name="token" value="{{ token }}">
+      <p><input type="text" name="nota" placeholder="Nota (ej. formulario web)"></p>
+      <p><label>Escribe <strong>si</strong> para confirmar que TÚ ya la enviaste:
+        <input type="text" name="confirmacion" autocomplete="off" style="width:80px"></label>
+        <button class="primario" type="submit">Marcar como enviada</button></p>
+    </form>
+  {% endif %}
+  {% if g.estado == 'enviada' %}<p>✅ Postulación enviada. ¡Suerte!</p>{% endif %}
+</div>
+
+{% if prep %}
+<div class="tarjeta">
+  <h3>Borrador v{{ prep.version }} <span class="suave">({{ prep.proveedor }}/{{ prep.modelo }})</span></h3>
+  <pre class="carta">{{ prep.texto | s }}</pre>
+</div>
+{% endif %}
+
+<div class="tarjeta">
+  <h3>Descripción de la oferta</h3>
+  <div class="descripcion">{{ descripcion }}</div>
+</div>
+
+{% if historial %}
+<div class="tarjeta">
+  <h3>Historial</h3>
+  {% for h in historial %}<div class="suave">{{ h.fecha }} · {{ h.de }} → {{ h.a }}{% if h.nota %} ({{ h.nota }}){% endif %}</div>{% endfor %}
+</div>
+{% endif %}
+{% endblock %}

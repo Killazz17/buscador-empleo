@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block titulo %}Preparar · {{ g.oferta.titulo | s }}{% endblock %}
+{% block contenido %}
+<div class="tarjeta">
+  <h2 style="margin-top:0">Preparar carta: {{ g.oferta.titulo | s }}</h2>
+  <ol class="pasos">
+    <li>Pulsa <button type="button" class="primario" onclick="copiar()">📋 Copiar pedido</button> <span id="copiado" class="suave"></span></li>
+    <li>Abre <a href="https://claude.ai/new" target="_blank" rel="noopener noreferrer">claude.ai ↗</a> (o Gemini), pega con <strong>Ctrl+V</strong> y envía.</li>
+    <li>Copia <strong>solo la carta</strong> que te devuelva y pégala abajo.</li>
+    <li>Pulsa <strong>Guardar borrador</strong>.</li>
+  </ol>
+  <details><summary class="suave">Ver el pedido completo</summary>
+    <textarea id="prompt" readonly>{{ prompt }}</textarea>
+  </details>
+</div>
+<div class="tarjeta">
+  <form method="post" action="/ofertas/{{ g.id }}/preparar">
+    <input type="hidden" name="token" value="{{ token }}">
+    <label><strong>Carta</strong></label>
+    <textarea name="carta" placeholder="Pega aquí la carta…" required></textarea>
+    <p><button class="primario" type="submit">💾 Guardar borrador</button>
+       <a class="boton" href="/ofertas/{{ g.id }}">Cancelar</a></p>
+  </form>
+</div>
+<script>
+  // Copia el pedido al portapapeles; si el navegador no lo permite, deja el texto seleccionado.
+  async function copiar() {
+    const texto = document.getElementById("prompt").value;
+    try { await navigator.clipboard.writeText(texto); document.getElementById("copiado").textContent = "¡Copiado!"; }
+    catch (e) { const t = document.getElementById("prompt"); t.parentElement.open = true; t.select();
+                document.getElementById("copiado").textContent = "Selecciónalo y pulsa Ctrl+C"; }
+  }
+</script>
+{% endblock %}

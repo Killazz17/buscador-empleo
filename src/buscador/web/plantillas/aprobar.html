@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block titulo %}Aprobar · {{ g.oferta.titulo | s }}{% endblock %}
+{% block contenido %}
+<div class="tarjeta">
+  <h2 style="margin-top:0">Aprobar carta v{{ prep.version }}: {{ g.oferta.titulo | s }}</h2>
+  <p class="suave">{{ g.oferta.empresa | s }} · Lee la carta completa: es tu firma.</p>
+  {% for alerta in alertas %}<p class="alerta">⚠ ATENCIÓN: el borrador {{ alerta | s }}</p>{% endfor %}
+  <pre class="carta">{{ prep.texto | s }}</pre>
+  <form method="post" action="/ofertas/{{ g.id }}/aprobar">
+    <input type="hidden" name="token" value="{{ token }}">
+    <input type="hidden" name="version" value="{{ prep.version }}">
+    <p><label>Escribe <strong>si</strong> para aprobar exactamente este texto:
+      <input type="text" name="confirmacion" autocomplete="off" style="width:80px"></label>
+      <button class="primario" type="submit">✔ Aprobar</button>
+      <a class="boton" href="/ofertas/{{ g.id }}">Volver</a></p>
+  </form>
+</div>
+{% endblock %}

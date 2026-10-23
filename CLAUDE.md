@@ -78,6 +78,10 @@ Fuentes → ingesta → normalización → deduplicación → filtro/puntuación
 - `src/buscador/preparacion.py` + `prompts/carta.md` + `config/cv.md` (el CV sin teléfono ni correo, en
   `.gitignore`). La oferta es texto de terceros: va en `<oferta>` con `<` y `>` neutralizados (contra la inyección de prompt).
 - `src/buscador/cli.py`: punto de entrada (`python -m buscador ...`).
+- `src/buscador/web/`: interfaz web local (FastAPI + Jinja2), **otro adaptador sobre el mismo núcleo**: no
+  duplica lógica. Se arranca con `buscador web` (solo en 127.0.0.1). Tiene token CSRF por arranque,
+  `TrustedHostMiddleware`, autoescape, `url_segura` (solo http/https) y confirmación escrita para aprobar o enviar.
+  Claude Code nunca llama a los endpoints `/aprobar` ni `/enviada` (hay reglas `deny`).
 - `data/raw/`: respuestas crudas de cada API, para poder reprocesar sin volver a pedir.
 - `data/ofertas_<fuente>_<fecha>[_<búsqueda>].json` → `data/filtradas_<fecha>.json` (ranking con puntuación y motivos).
 - `src/buscador/almacenamiento.py`: `Repositorio` SQLite en `data/buscador.db`, donde vive todo el SQL.
