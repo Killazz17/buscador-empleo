@@ -93,12 +93,22 @@ def crear_app(ruta_db: Path, ruta_cv: Path, ruta_plantilla: Path,
     vistas.env.tests["match"] = _coincide  # `select('match', patrón)`: Jinja no trae un test de regex
 
     def origen_permitido(request: Request) -> bool:
-        """Un POST del navegador trae `Origin`; si viene de otra web, se rechaza (defensa extra al token CSRF).
+        """Un POST de otra web se rechaza (defensa extra al token CSRF).
 
-        Sin cabecera (curl, tests) se deja pasar: ahí manda el token, que una web ajena no conoce.
+        Sin cabeceras de navegador (curl, tests) se deja pasar: ahí manda el token, que una web ajena no conoce.
+        Ojo: con `Referrer-Policy: no-referrer` el navegador manda `Origin: null` hasta en el MISMO sitio, así
+        que `null` solo se acepta si `Sec-Fetch-Site` (que el navegador pone y la página no puede falsificar)
+        dice `same-origin`.
         """
+        sitio = request.headers.get("sec-fetch-site")
+        if sitio is not None and sitio not in ("same-origin", "none"):
+            return False
         origen = request.headers.get("origin")
-        return origen is None or urlsplit(origen).hostname in hosts
+        if origen is None:
+            return True
+        if origen == "null":
+            return sitio == "same-origin"
+        return urlsplit(origen).hostname in hosts
 
     # Registrado DESPUÉS de TrustedHost: en Starlette el último añadido es la capa más externa, así que
     # hasta las respuestas 400 de "Host inválido" salen con las cabeceras de seguridad.

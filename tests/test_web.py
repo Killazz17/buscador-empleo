@@ -234,6 +234,27 @@ class TestCierreDeRama(BaseWeb):
                           headers={"Origin": "http://127.0.0.1:8765"}, follow_redirects=False)
         self.assertEqual(r.status_code, 303)
 
+    def post_de_navegador(self, **cabeceras):
+        return self.web.post(f"/ofertas/{self.ids['a']}/descartar", data={"token": self.token},
+                             headers=cabeceras, follow_redirects=False)
+
+    def test_post_real_de_navegador_con_origin_null_se_acepta(self):
+        # Con `Referrer-Policy: no-referrer` el navegador manda `Origin: null` incluso en el mismo sitio
+        # (spec de Fetch). Es lo que enviaba Brave al pulsar un botón: no puede bloquearse.
+        r = self.post_de_navegador(**{"Origin": "null", "Sec-Fetch-Site": "same-origin"})
+        self.assertEqual(r.status_code, 303)
+        self.assertEqual(self.estado(), "descartada")
+
+    def test_origin_null_sin_prueba_de_mismo_sitio_se_rechaza(self):
+        # `null` también lo mandan iframes aislados y páginas locales: sin Sec-Fetch-Site no hay garantía.
+        self.assertEqual(self.post_de_navegador(Origin="null").status_code, 403)
+        self.assertEqual(self.estado(), "nueva")
+
+    def test_sec_fetch_site_de_otro_sitio_se_rechaza_aunque_el_origin_sea_local(self):
+        r = self.post_de_navegador(**{"Origin": "http://127.0.0.1:8765", "Sec-Fetch-Site": "cross-site"})
+        self.assertEqual(r.status_code, 403)
+        self.assertEqual(self.estado(), "nueva")
+
     def test_errores_http_se_muestran_como_pagina_html(self):
         casos = (self.web.get("/ofertas/99999"),                                   # 404
                  self.web.post(f"/ofertas/{self.ids['a']}/descartar", data={"token": "x"}),  # 403
