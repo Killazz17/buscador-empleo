@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% from "_iconos.html" import icono %}
+{% block contenido %}
+<div class="tarjeta entra" style="max-width:560px; margin:40px auto; text-align:center">
+  <div style="color:var(--aviso)">{{ icono('aviso', 'ico grande') }}</div>
+  <h1 style="margin:8px 0">{{ titulo }}</h1>
+  <p class="suave">{{ mensaje }}</p>
+  <p><a class="boton boton-teal" href="/">{{ icono('flecha') }} Volver a las ofertas</a></p>
+</div>
+{% endblock %}

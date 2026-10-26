@@ -35,6 +35,18 @@ buscador preparar 12              # borrador de carta (modo manual: gratis)
 buscador aprobar 12               # solo una persona, en una terminal interactiva
 buscador enviada 12 --nota "web"  # después de postular TÚ
 ```
+### Interfaz web local
+```bash
+python -m pip install -e ".[web]"
+buscador web                      # abre http://127.0.0.1:8765 en tu navegador
+```
+Tiene un embudo con contadores (pendientes → preparadas → aprobadas → enviadas), búsqueda instantánea con filtros
+(Remoto, Junior, Sin dudas de ubicación; tecla `/` para buscar), avisos con "Deshacer", un asistente de 3 pasos para
+preparar la carta (copiar el pedido, pegar la respuesta, contador de palabras) y "Aprobar" escribiendo «si».
+Incluye modo oscuro y respeta "reducir movimiento" del sistema.
+Solo escucha en tu equipo, con token CSRF, escapado de HTML, enlaces solo `http(s)`, protección contra DNS rebinding
+y una Content-Security-Policy con nonce (solo se ejecutan los scripts propios de cada página).
+
 Para usar la API de Claude: `pip install -e ".[claude]"`, define `ANTHROPIC_API_KEY` y pon `proveedor = "claude"` en `config/ia.toml`.
 
 Tu CV va en `config/cv.md`, que está en `.gitignore` y nunca se sube.

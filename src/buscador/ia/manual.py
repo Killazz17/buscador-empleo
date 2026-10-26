@@ -5,7 +5,6 @@ que pegues la respuesta de la web en otro archivo y la devuelve. Mismo contrato 
 el resto del programa (guardar versión, aprobar, historial) no nota la diferencia.
 """
 
-import re
 import subprocess
 import sys
 import uuid
@@ -14,6 +13,7 @@ from datetime import datetime
 from pathlib import Path
 
 from buscador.ia.base import IAError, ProveedorIA, RespuestaIA
+from buscador.modelos import normalizar_pegado
 
 # src/buscador/ia/manual.py → parents[3] = raíz del proyecto. data/ está en .gitignore.
 CARPETA_POR_DEFECTO = Path(__file__).resolve().parents[3] / "data" / "manual"
@@ -83,5 +83,4 @@ class Manual(ProveedorIA):
             texto = ruta.read_bytes().decode("utf-8-sig")  # -sig: quita el BOM si lo hay
         except UnicodeDecodeError as e:
             raise IAError(f"{ruta.name} no está guardado como UTF-8: guárdalo de nuevo con codificación UTF-8") from e
-        texto = texto.replace("\r\n", "\n").replace("\r", "")
-        return re.sub(r"\n{3,}", "\n\n", texto).strip()  # como mucho, una línea en blanco entre párrafos
+        return normalizar_pegado(texto)

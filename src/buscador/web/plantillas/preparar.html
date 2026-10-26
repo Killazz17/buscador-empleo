@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% from "_iconos.html" import icono %}
+{% block titulo %}Preparar carta · {{ g.oferta.titulo | s }}{% endblock %}
+{% block estilos %}<style>
+  .volver { display:inline-flex; gap:6px; align-items:center; margin-bottom:14px; text-decoration:none; font-weight:600; }
+  h1 { margin:0 0 4px; font-size:clamp(22px, 3.4vw, 30px); letter-spacing:-.02em; }
+  .asistente { display:grid; gap:14px; margin-top:18px; }
+  .paso { display:grid; grid-template-columns:44px 1fr; gap:14px; align-items:start; }
+  .numero { width:44px; height:44px; border-radius:14px; display:grid; place-items:center; font-weight:800; font-size:18px;
+            background:var(--primario-suave); color:var(--primario); transition:background var(--medio), color var(--medio); }
+  .paso.hecho .numero { background:var(--primario); color:#fff; }
+  [data-tema="oscuro"] .paso.hecho .numero { color:#0B1615; }
+  .paso h2 { margin:6px 0 6px; font-size:17px; } .paso p { margin:0 0 12px; }
+  .fila { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  textarea { width:100%; min-height:300px; padding:16px; border-radius:12px; border:1px solid var(--borde); background:var(--papel);
+             color:var(--texto); font:16px/1.65 Georgia, serif; resize:vertical; }
+  textarea:focus { border-color:var(--secundario); outline:none; box-shadow:0 0 0 4px var(--primario-suave); }
+  .contador { font-weight:700; font-variant-numeric:tabular-nums; }
+  .contador.bien { color:var(--pos); } .contador.corto, .contador.largo { color:var(--aviso); }
+  .barra { height:6px; border-radius:99px; background:var(--info-fondo); overflow:hidden; margin-top:8px; }
+  .barra span { display:block; height:100%; width:0; background:var(--secundario); transition:width var(--medio) var(--curva), background var(--medio); }
+  details textarea { min-height:200px; font:13px/1.5 ui-monospace, monospace; background:var(--fondo); }
+  details summary { cursor:pointer; min-height:44px; display:flex; align-items:center; }
+  .copiado { color:var(--pos); font-weight:700; opacity:0; transition:opacity var(--rapido); } .copiado.si { opacity:1; }
+</style>{% endblock %}
+{% block contenido %}
+<a class="volver" href="/ofertas/{{ g.id }}">{{ icono('flecha') }} Volver a la oferta</a>
+<h1>Preparar tu carta</h1>
+<p class="suave">{{ g.oferta.titulo | s }} · {{ g.oferta.empresa | s }}</p>
+
+<div class="asistente">
+  <section class="tarjeta paso entra" id="paso-1">
+    <span class="numero">1</span>
+    <div>
+      <h2>Copia el pedido</h2>
+      <p class="suave">Incluye las instrucciones, tu CV (sin teléfono ni correo) y la oferta.</p>
+      <div class="fila">
+        <button class="boton boton-primario" type="button" id="copiar">{{ icono('copiar') }} Copiar pedido</button>
+        <span class="copiado" id="copiado" aria-live="polite">¡Copiado!</span>
+      </div>
+      <details><summary class="suave">Ver el pedido completo</summary><textarea id="prompt" readonly>{{ prompt }}</textarea></details>
+    </div>
+  </section>
+
+  <section class="tarjeta paso entra" style="--i:1" id="paso-2">
+    <span class="numero">2</span>
+    <div>
+      <h2>Pídele la carta a la IA</h2>
+      <p class="suave">Abre un chat nuevo, pega con <strong>Ctrl+V</strong> y envíalo. Es gratis con tu suscripción.</p>
+      <div class="fila">
+        <a class="boton" id="abrir-ia" href="https://claude.ai/new" target="_blank" rel="noopener noreferrer">{{ icono('externo') }} Abrir Claude</a>
+        <a class="boton" href="https://gemini.google.com/app" target="_blank" rel="noopener noreferrer">{{ icono('externo') }} Abrir Gemini</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="tarjeta paso entra" style="--i:2" id="paso-3">
+    <span class="numero">3</span>
+    <div>
+      <h2>Pega aquí la carta y guárdala</h2>
+      <p class="suave">Copia <strong>solo la carta</strong>, sin frases como "Aquí tienes…". Lo ideal: entre 200 y 300 palabras.</p>
+      <form method="post" action="/ofertas/{{ g.id }}/preparar">
+        <input type="hidden" name="token" value="{{ token }}">
+        <label class="sr" for="carta">Carta</label>
+        <textarea id="carta" name="carta" placeholder="Dear Hiring Team, …" required></textarea>
+        <div class="barra" aria-hidden="true"><span id="barra"></span></div>
+        <div class="fila" style="justify-content:space-between; margin-top:12px">
+          <span class="contador" id="contador" aria-live="polite">0 palabras</span>
+          <button class="boton boton-teal" type="submit">{{ icono('check') }} Guardar borrador</button>
+        </div>
+      </form>
+    </div>
+  </section>
+</div>
+{% endblock %}
+{% block script %}
+  const marcar = n => document.getElementById("paso-" + n)?.classList.add("hecho");
+  document.getElementById("copiar")?.addEventListener("click", async () => {
+    const t = document.getElementById("prompt");
+    try { await navigator.clipboard.writeText(t.value); }
+    catch (e) { t.closest("details").open = true; t.select(); document.execCommand("copy"); }
+    const ok = document.getElementById("copiado"); ok.classList.add("si"); setTimeout(() => ok.classList.remove("si"), 2500);
+    marcar(1);
+  });
+  document.getElementById("abrir-ia")?.addEventListener("click", () => marcar(2));
+  // Contador de palabras en vivo: meta 200–300.
+  const carta = document.getElementById("carta"), cont = document.getElementById("contador"), barra = document.getElementById("barra");
+  carta?.addEventListener("input", () => {
+    const n = (carta.value.trim().match(/\S+/g) || []).length;
+    const estado = n === 0 ? "" : n < 200 ? "corto" : n > 300 ? "largo" : "bien";
+    cont.className = "contador " + estado;
+    cont.textContent = n + " palabras" + (estado === "corto" ? " · un poco corta" : estado === "largo" ? " · algo larga" : estado === "bien" ? " · ¡perfecta!" : "");
+    barra.style.width = Math.min(100, n / 3) + "%";
+    barra.style.background = estado === "bien" ? "var(--pos)" : "var(--secundario)";
+    if (n > 0) marcar(3);
+  });
+{% endblock %}

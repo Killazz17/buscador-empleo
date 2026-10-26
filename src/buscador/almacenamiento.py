@@ -408,6 +408,13 @@ class Repositorio:
             parametros.append(limite)
         return [self._a_guardada(fila) for fila in self._con.execute(sql, parametros)]
 
+    def contar_por_estado(self) -> dict[str, int]:
+        """Cuántas ofertas hay en cada estado (todos los estados presentes, aunque sea con 0)."""
+        conteo = dict.fromkeys(ESTADOS, 0)
+        for fila in self._con.execute("SELECT estado, count(*) AS n FROM ofertas GROUP BY estado"):
+            conteo[fila["estado"]] = fila["n"]
+        return conteo
+
     def buscar_id(self, fuente: str, id_fuente: str) -> int | None:
         fila = self._con.execute("SELECT id FROM ofertas WHERE fuente = ? AND id_fuente = ?",
                                  (fuente, id_fuente)).fetchone()

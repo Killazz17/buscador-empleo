@@ -7,7 +7,15 @@
       "PowerShell(*buscador enviada*)",
       "Bash(*sqlite3*)",
       "PowerShell(*sqlite3*)",
-      "Edit(/data/**)"
+      "Edit(/data/**)",
+      "Bash(*127.0.0.1*/aprobar*)",
+      "Bash(*127.0.0.1*/enviada*)",
+      "Bash(*localhost*/aprobar*)",
+      "Bash(*localhost*/enviada*)",
+      "PowerShell(*127.0.0.1*/aprobar*)",
+      "PowerShell(*127.0.0.1*/enviada*)",
+      "PowerShell(*localhost*/aprobar*)",
+      "PowerShell(*localhost*/enviada*)"
     ]
   }
 }

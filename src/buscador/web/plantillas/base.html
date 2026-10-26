@@ -1,0 +1,204 @@
+{% from "_iconos.html" import icono %}<!doctype html>
+<html lang="es" data-tema="claro">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block titulo %}Tu mesa de postulaciones{% endblock %}</title>
+  <script nonce="{{ nonce }}">
+    // Antes de pintar: aplicar el tema guardado (evita el "parpadeo" claro→oscuro).
+    try { const t = localStorage.getItem("tema"); if (t) document.documentElement.dataset.tema = t;
+          else if (matchMedia("(prefers-color-scheme: dark)").matches) document.documentElement.dataset.tema = "oscuro"; } catch (e) {}
+  </script>
+  <style>
+    /* ===== Tokens (sistema de diseño ui-ux-pro-max: teal de confianza + naranja de acción) ===== */
+    :root {
+      --primario:#0F766E; --primario-suave:#CCFBF1; --secundario:#14B8A6; --accion:#EA580C; --accion-texto:#fff;
+      --fondo:#F0FDFA; --tarjeta:#FFFFFF; --texto:#134E4A; --texto-suave:#475569; --borde:#CCEDE7;
+      --pos:#15803D; --pos-fondo:#DCFCE7; --neg:#B91C1C; --neg-fondo:#FEE2E2; --info:#334155; --info-fondo:#E8F1F4;
+      --aviso:#B45309; --aviso-fondo:#FEF3C7; --sombra:0 1px 2px rgb(19 78 74 / .06), 0 8px 24px -12px rgb(19 78 74 / .18);
+      --radio:16px; --rapido:150ms; --medio:260ms; --curva:cubic-bezier(.2,.8,.2,1); --papel:#FFFDF7;
+    }
+    [data-tema="oscuro"] {
+      --primario:#2DD4BF; --primario-suave:#123A37; --secundario:#14B8A6; --accion:#FB923C; --accion-texto:#1C1917;
+      --fondo:#0B1615; --tarjeta:#122120; --texto:#E6F4F1; --texto-suave:#9FB7B3; --borde:#21403D;
+      --pos:#4ADE80; --pos-fondo:#12301F; --neg:#F87171; --neg-fondo:#3A1717; --info:#CBD5E1; --info-fondo:#1E2B2A;
+      --aviso:#FBBF24; --aviso-fondo:#33270C; --sombra:0 1px 2px rgb(0 0 0 / .3), 0 10px 30px -12px rgb(0 0 0 / .6); --papel:#1A2826;
+    }
+    *, *::before, *::after { box-sizing:border-box; }
+    html { scroll-behavior:smooth; }
+    body { margin:0; font:16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background:var(--fondo); color:var(--texto);
+           -webkit-font-smoothing:antialiased; transition:background var(--medio), color var(--medio); }
+    a { color:var(--primario); }
+    :focus-visible { outline:3px solid var(--secundario); outline-offset:2px; border-radius:6px; }
+    .ico { width:18px; height:18px; flex:none; }
+    .sr { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+    .cabecera { position:sticky; top:0; z-index:20; background:color-mix(in srgb, var(--fondo) 82%, transparent);
+                backdrop-filter:blur(10px); border-bottom:1px solid var(--borde); }
+    .cabecera-in { max-width:1100px; margin:0 auto; padding:14px 18px; display:flex; gap:18px; align-items:center; flex-wrap:wrap; }
+    .marca { display:flex; align-items:center; gap:10px; font-weight:800; font-size:18px; color:var(--texto); text-decoration:none; }
+    .marca .logo { width:34px; height:34px; border-radius:10px; display:grid; place-items:center; color:#fff;
+                   background:linear-gradient(135deg, var(--primario), var(--secundario)); }
+    .embudo { display:flex; gap:6px; flex:1; flex-wrap:wrap; align-items:center; }
+    .etapa { display:flex; align-items:center; gap:8px; padding:8px 12px; border-radius:12px; text-decoration:none;
+             color:var(--texto-suave); font-weight:600; font-size:14px; border:1px solid transparent; min-height:44px;
+             transition:background var(--rapido), color var(--rapido), transform var(--rapido); }
+    .etapa:hover { background:var(--primario-suave); color:var(--texto); transform:translateY(-1px); }
+    .etapa.activa { background:var(--tarjeta); color:var(--primario); border-color:var(--borde); box-shadow:var(--sombra); }
+    .etapa .cuenta { min-width:26px; padding:1px 8px; border-radius:99px; background:var(--info-fondo); color:var(--texto);
+                     font-variant-numeric:tabular-nums; text-align:center; }
+    .etapa.activa .cuenta { background:var(--primario); color:#fff; }
+    [data-tema="oscuro"] .etapa.activa .cuenta { color:#0B1615; }
+    .sep { opacity:.35; }
+    .boton-tema { margin-left:auto; }
+    main { max-width:1100px; margin:0 auto; padding:26px 18px 80px; }
+    .boton { display:inline-flex; align-items:center; gap:8px; min-height:44px; padding:10px 16px; border-radius:12px;
+             border:1px solid var(--borde); background:var(--tarjeta); color:var(--texto); font:inherit; font-weight:600;
+             cursor:pointer; text-decoration:none; position:relative;
+             transition:transform var(--rapido) var(--curva), box-shadow var(--rapido), background var(--rapido), border-color var(--rapido); }
+    .boton:hover { transform:translateY(-1px); box-shadow:var(--sombra); border-color:var(--secundario); }
+    .boton:active { transform:translateY(0) scale(.98); }
+    .boton[disabled] { opacity:.5; cursor:not-allowed; transform:none; box-shadow:none; }
+    .boton-primario { background:var(--accion); color:var(--accion-texto); border-color:var(--accion); }
+    .boton-primario:hover { border-color:var(--accion); filter:brightness(1.05); }
+    .boton-teal { background:var(--primario); color:#fff; border-color:var(--primario); }
+    [data-tema="oscuro"] .boton-teal { color:#0B1615; }
+    .boton-peligro { color:var(--neg); }
+    .boton-peligro:hover { background:var(--neg-fondo); border-color:var(--neg); }
+    .boton-icono { padding:10px; }
+    .tarjeta { background:var(--tarjeta); border:1px solid var(--borde); border-radius:var(--radio); padding:20px; box-shadow:var(--sombra); }
+    .chips { display:flex; flex-wrap:wrap; gap:6px; }
+    .chip { font-size:12.5px; font-weight:600; padding:3px 10px; border-radius:99px; line-height:1.6; }
+    .chip-pos { background:var(--pos-fondo); color:var(--pos); } .chip-neg { background:var(--neg-fondo); color:var(--neg); }
+    .chip-info { background:var(--info-fondo); color:var(--info); }
+    .suave { color:var(--texto-suave); }
+    .etiqueta-estado { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; padding:4px 10px;
+                       border-radius:99px; background:var(--primario-suave); color:var(--primario); }
+    .anillo { position:relative; width:56px; height:56px; flex:none; }
+    .anillo svg { width:100%; height:100%; transform:rotate(-90deg); }
+    .anillo circle { fill:none; stroke-width:3.4; }
+    .anillo .pista { stroke:var(--info-fondo); }
+    .anillo .valor { stroke-linecap:round; stroke-dasharray:100; stroke-dashoffset:calc(100 - var(--pct)); animation:llenar 900ms var(--curva) both; }
+    .anillo span { position:absolute; inset:0; display:grid; place-items:center; font-weight:800; font-size:14px; }
+    .anillo-alto .valor { stroke:var(--pos); } .anillo-medio .valor { stroke:var(--secundario); } .anillo-bajo .valor { stroke:var(--accion); }
+    .anillo-grande { width:84px; height:84px; } .anillo-grande span { font-size:20px; }
+    @keyframes llenar { from { stroke-dashoffset:100; } }
+    .toast { position:fixed; left:50%; bottom:24px; transform:translate(-50%, 160%); z-index:50; display:flex; align-items:center;
+             gap:12px; padding:10px 12px 10px 18px; border-radius:14px; background:var(--texto); color:var(--fondo);
+             box-shadow:0 20px 40px -12px rgb(0 0 0 / .35); transition:transform 380ms var(--curva); max-width:calc(100% - 32px); }
+    .toast.visible { transform:translate(-50%, 0); }
+    .toast form { margin:0; }
+    .toast .boton { min-height:36px; padding:6px 12px; background:transparent; color:inherit; border-color:color-mix(in srgb, var(--fondo) 35%, transparent); }
+    .entra { animation:entrar 450ms var(--curva) both; animation-delay:calc(var(--i, 0) * 45ms); }
+    @keyframes entrar { from { opacity:0; transform:translateY(14px) scale(.98); } }
+    .chispa { position:fixed; width:6px; height:6px; border-radius:99px; background:var(--accion); pointer-events:none; z-index:60;
+              animation:chispa 520ms ease-out forwards; }
+    @keyframes chispa { to { transform:translate(var(--dx), var(--dy)) scale(.2); opacity:0; } }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration:1ms !important; animation-delay:0ms !important; transition-duration:1ms !important; }
+      html { scroll-behavior:auto; }
+    }
+    @media (max-width:720px) {
+      /* Móvil: el embudo pasa a una fila propia, desplazable en horizontal y con sus nombres. */
+      .cabecera-in { gap:10px; }
+      .embudo { order:3; flex-basis:100%; flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; margin:0 -4px; padding:2px 4px; }
+      .embudo::-webkit-scrollbar { display:none; }
+      .etapa { white-space:nowrap; padding:6px 10px; }
+      .buscador { flex-basis:100%; }
+    }
+  </style>
+  {% block estilos %}{% endblock %}
+</head>
+<body data-aviso="{{ aviso }}">
+<a class="sr" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="cabecera-in">
+    <a class="marca" href="/"><span class="logo">{{ icono('chispa') }}</span><span>Tu mesa de postulaciones</span></a>
+    <nav class="embudo" aria-label="Etapas de tus postulaciones">
+      {% set actual = estado | default('') %}
+      {% for clave, nombre in [('nueva', 'Pendientes'), ('preparada', 'Preparadas'), ('aprobada', 'Aprobadas'), ('enviada', 'Enviadas')] %}
+        <a id="etapa-{{ clave }}" class="etapa{{ ' activa' if actual == clave }}" href="/?estado={{ clave }}"{{ ' aria-current="page"' if actual == clave }}>
+          <span class="texto-etapa">{{ nombre }}</span><span class="cuenta" data-countup="{{ conteo[clave] }}">{{ conteo[clave] }}</span>
+        </a>{% if not loop.last %}<span class="sep" aria-hidden="true">›</span>{% endif %}
+      {% endfor %}
+      <a id="etapa-descartada" class="etapa{{ ' activa' if actual == 'descartada' }}" href="/?estado=descartada" title="Descartadas" aria-label="Descartadas">
+        {{ icono('basura') }}<span class="cuenta" data-countup="{{ conteo['descartada'] }}">{{ conteo['descartada'] }}</span>
+      </a>
+    </nav>
+    <button class="boton boton-icono boton-tema" type="button" id="cambiar-tema" aria-label="Cambiar entre modo claro y oscuro">{{ icono('luna') }}</button>
+  </div>
+</header>
+
+<main id="contenido">
+{% block contenido %}{% endblock %}
+</main>
+
+{% if aviso_texto %}
+<div class="toast" id="toast" role="status" aria-live="polite">
+  {{ icono('check') }} <span>{{ aviso_texto }}</span>
+  {% if aviso == 'descartada' and aviso_id %}
+  <form method="post" action="/ofertas/{{ aviso_id | int }}/restaurar">
+    <input type="hidden" name="token" value="{{ token }}">
+    <button class="boton" type="submit">{{ icono('deshacer') }} Deshacer</button>
+  </form>
+  {% endif %}
+  <button class="boton boton-icono" type="button" id="cerrar-toast" aria-label="Cerrar aviso">{{ icono('cerrar') }}</button>
+</div>
+{% endif %}
+
+<script nonce="{{ nonce }}">
+(() => {
+  const calma = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const raiz = document.documentElement;
+  document.getElementById("cambiar-tema")?.addEventListener("click", () => {
+    raiz.dataset.tema = raiz.dataset.tema === "oscuro" ? "claro" : "oscuro";
+    try { localStorage.setItem("tema", raiz.dataset.tema); } catch (e) {}
+  });
+  // CountUp: el servidor ya pinta el número final; aquí solo se anima.
+  if (!calma) document.querySelectorAll("[data-countup]").forEach(el => {
+    const fin = +el.dataset.countup; if (!fin) return;
+    const t0 = performance.now(), dur = 700;
+    const paso = t => { const p = Math.min(1, (t - t0) / dur); el.textContent = Math.round(fin * (1 - Math.pow(1 - p, 3)));
+                        if (p < 1) requestAnimationFrame(paso); };
+    requestAnimationFrame(paso);
+  });
+  // ClickSpark: chispas desde el punto del clic en los botones de acción.
+  document.addEventListener("click", e => {
+    const b = e.target.closest(".boton-primario, .boton-teal"); if (!b || calma || !e.clientX) return;
+    for (let i = 0; i < 10; i++) {
+      const s = document.createElement("span"), ang = (Math.PI * 2 * i) / 10, r = 26 + Math.random() * 18;
+      s.className = "chispa"; s.style.left = e.clientX - 3 + "px"; s.style.top = e.clientY - 3 + "px";
+      s.style.setProperty("--dx", Math.cos(ang) * r + "px"); s.style.setProperty("--dy", Math.sin(ang) * r + "px");
+      document.body.appendChild(s); setTimeout(() => s.remove(), 600);
+    }
+  });
+  // Aviso (toast) tras cada acción.
+  const toast = document.getElementById("toast");
+  if (toast) {
+    requestAnimationFrame(() => requestAnimationFrame(() => toast.classList.add("visible")));
+    const cerrar = () => toast.classList.remove("visible");
+    document.getElementById("cerrar-toast")?.addEventListener("click", cerrar);
+    setTimeout(cerrar, 7000);
+    const u = new URL(location.href); u.searchParams.delete("aviso"); u.searchParams.delete("id");
+    history.replaceState(null, "", u.pathname + u.search);
+  }
+  // Confeti al registrar una postulación enviada.
+  if (document.body.dataset.aviso === "enviada" && !calma) {
+    const c = document.createElement("canvas"), ctx = c.getContext("2d");
+    Object.assign(c.style, { position: "fixed", inset: 0, width: "100%", height: "100%", pointerEvents: "none", zIndex: 70 });
+    document.body.appendChild(c); c.width = innerWidth; c.height = innerHeight;
+    const colores = ["#0F766E", "#14B8A6", "#EA580C", "#FBBF24", "#22C55E"];
+    const p = Array.from({ length: 160 }, () => ({ x: innerWidth / 2, y: innerHeight * .35, vx: (Math.random() - .5) * 14,
+      vy: -Math.random() * 14 - 4, r: 4 + Math.random() * 5, c: colores[Math.random() * colores.length | 0], a: Math.random() * 6 }));
+    const t0 = performance.now();
+    (function anim(t) {
+      ctx.clearRect(0, 0, c.width, c.height);
+      p.forEach(q => { q.vy += .32; q.x += q.vx; q.y += q.vy; q.a += .2; ctx.save(); ctx.translate(q.x, q.y); ctx.rotate(q.a);
+                       ctx.fillStyle = q.c; ctx.fillRect(-q.r / 2, -q.r / 4, q.r, q.r / 2); ctx.restore(); });
+      if (t - t0 < 2800) requestAnimationFrame(anim); else c.remove();
+    })(t0);
+  }
+  {% block script %}{% endblock %}
+})();
+</script>
+</body>
+</html>
