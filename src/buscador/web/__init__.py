@@ -11,9 +11,13 @@ Límite honesto: un programa en tu PC que lea la página puede obtener el token.
 contra errores y webs ajenas, no contra software malicioso que ya corre con tu usuario.
 """
 
+import argparse
+import io
 import re
 import secrets
+import threading
 from collections.abc import Awaitable, Callable
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -74,17 +78,43 @@ def _tipo_motivo(motivo: str) -> str:
     return "info"
 
 
+# Acciones del pipeline que se pueden lanzar desde la web. Solo LEEN fuentes públicas y puntúan:
+# nada de aquí prepara, aprueba ni envía (eso sigue exigiendo tu confirmación escrita, oferta por oferta).
+ACCIONES = {"descargar": "Descargar ofertas", "filtrar": "Filtrar y puntuar"}
+
+
+def ejecutar_en_cli(accion: str) -> tuple[int, str]:
+    """Ejecuta el MISMO comando que la terminal y devuelve (código de salida, lo que habría impreso).
+
+    Se reutiliza `cli.py` en vez de copiar su lógica (límite diario, "ya descargaste hoy", perfil…): la web
+    es otro adaptador sobre el mismo núcleo. La salida se captura redirigiendo stdout/stderr, que es global
+    al proceso: por eso `crear_app` solo deja correr una acción a la vez.
+    """
+    from buscador import cli  # import tardío: `cli` importa la web solo al arrancarla y así no hay ciclo
+
+    comandos = {
+        "descargar": lambda: cli.comando_descargar(argparse.Namespace(fuente=None, search=None, force=False)),
+        "filtrar": lambda: cli.comando_filtrar(argparse.Namespace(fecha=None, top=15, minimo=None)),
+    }
+    salida = io.StringIO()
+    with redirect_stdout(salida), redirect_stderr(salida):
+        codigo = comandos[accion]()
+    return codigo, salida.getvalue()
+
+
 def _coincide(valor: object, patron: str) -> bool:
     """Test de Jinja `match`: ¿el valor cumple la expresión regular? (Jinja no trae uno de serie)."""
     return re.search(patron, str(valor)) is not None
 
 
 def crear_app(ruta_db: Path, ruta_cv: Path, ruta_plantilla: Path,
-              hosts: tuple[str, ...] = ("127.0.0.1", "localhost")) -> FastAPI:
+              hosts: tuple[str, ...] = ("127.0.0.1", "localhost"),
+              ejecutar: Callable[[str], tuple[int, str]] = ejecutar_en_cli) -> FastAPI:
     # Sin /docs ni /openapi.json: es una app personal, no una API pública.
     app = FastAPI(title="Buscador de empleo", docs_url=None, redoc_url=None, openapi_url=None)
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=list(hosts))
     app.state.token = secrets.token_urlsafe(32)
+    app.state.bloqueo = threading.Lock()  # una sola acción del pipeline a la vez
     vistas = Jinja2Templates(directory=PLANTILLAS)
     vistas.env.filters["url_segura"] = url_segura
     vistas.env.filters["s"] = sin_controles
@@ -164,6 +194,23 @@ def crear_app(ruta_db: Path, ruta_cv: Path, ruta_plantilla: Path,
         with Repositorio(ruta_db) as repo:
             ofertas = repo.listar(estado=None if estado == "todas" else estado, limite=200)
         return render(request, "lista.html", ofertas=ofertas, estado=estado, estados=sorted(ESTADOS))
+
+    @app.post("/pipeline/{accion}", response_class=HTMLResponse)
+    def pipeline(request: Request, accion: str, token: str = Form("")) -> HTMLResponse:
+        verificar_token(token)
+        if accion not in ACCIONES:
+            raise HTTPException(404, "Acción desconocida")
+        # No bloqueante: si ya hay una en curso se avisa en vez de apilar peticiones (y mezclar sus salidas).
+        if not app.state.bloqueo.acquire(blocking=False):
+            raise HTTPException(409, "Ya hay una descarga o un filtrado en curso: espera a que termine.")
+        try:
+            codigo, salida = ejecutar(accion)
+        except Exception as e:  # una fuente rota no debe tumbar la web
+            codigo, salida = 1, f"Error inesperado: {e!r}"
+        finally:
+            app.state.bloqueo.release()
+        # La salida incluye texto de terceros (títulos de ofertas): se limpia y la plantilla la escapa.
+        return render(request, "salida.html", titulo=ACCIONES[accion], codigo=codigo, salida=sin_controles(salida))
 
     @app.get("/ofertas/{oferta_id}", response_class=HTMLResponse)
     def detalle(request: Request, oferta_id: int):

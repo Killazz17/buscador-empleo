@@ -256,6 +256,110 @@ class TestCierreDeRama(BaseWeb):
         self.assertEqual(self.estado(), "nueva")
 
 
+class TestBotonesDePipeline(BaseWeb):
+    """Botones «Descargar» y «Filtrar» de la web: ejecutan los mismos comandos que la terminal."""
+
+    def setUp(self):
+        super().setUp()
+        self.llamadas: list[str] = []
+        self.salida = (0, "3 ofertas descargadas.")
+
+        def falso(accion):  # sustituye a la CLI: los tests no tocan la red ni el disco real
+            self.llamadas.append(accion)
+            return self.salida
+
+        raiz = self.ruta_db.parent
+        self.app = crear_app(self.ruta_db, raiz / "cv.md", raiz / "carta.md", ejecutar=falso)
+        self.token = self.app.state.token
+        self.web = TestClient(self.app, base_url="http://127.0.0.1")
+
+    def test_la_lista_ofrece_los_dos_botones_con_token(self):
+        html = self.web.get("/").text
+        for accion in ("descargar", "filtrar"):
+            with self.subTest(accion=accion):
+                m = re.search(rf'<form[^>]*action="/pipeline/{accion}".*?</form>', html, re.S)
+                self.assertIsNotNone(m, f"falta el botón {accion}")
+                self.assertIn(self.token, m.group(0))
+
+    def test_descargar_ejecuta_y_muestra_la_salida(self):
+        r = self.post("/pipeline/descargar")
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(self.llamadas, ["descargar"])
+        self.assertIn("3 ofertas descargadas.", r.text)
+
+    def test_la_salida_es_texto_de_terceros_y_se_escapa(self):
+        self.salida = (0, "<script>alert('xss')</script>")
+        r = self.post("/pipeline/filtrar")
+        self.assertNotIn("<script>alert", r.text)
+        self.assertIn("&lt;script&gt;", r.text)
+
+    def test_sin_token_no_ejecuta_nada(self):
+        self.assertEqual(self.post("/pipeline/descargar", token=False).status_code, 403)
+        self.assertEqual(self.llamadas, [])
+
+    def test_accion_desconocida_es_404_y_no_ejecuta(self):
+        self.assertEqual(self.post("/pipeline/preparar").status_code, 404)
+        self.assertEqual(self.post("/pipeline/aprobar").status_code, 404)  # el pipeline NUNCA aprueba nada
+        self.assertEqual(self.llamadas, [])
+
+    def test_si_el_comando_falla_se_avisa_sin_romper(self):
+        self.salida = (1, "Error: API caída")
+        r = self.post("/pipeline/descargar")
+        self.assertEqual(r.status_code, 200)
+        self.assertIn("API caída", r.text)
+        self.assertIn("con errores", r.text)
+
+    def test_una_excepcion_inesperada_se_muestra_como_error(self):
+        raiz = self.ruta_db.parent
+
+        def explota(accion):
+            raise RuntimeError("boom")
+
+        app = crear_app(self.ruta_db, raiz / "cv.md", raiz / "carta.md", ejecutar=explota)
+        r = TestClient(app, base_url="http://127.0.0.1").post(
+            "/pipeline/descargar", data={"token": app.state.token})
+        self.assertEqual(r.status_code, 200)
+        self.assertIn("boom", r.text)
+
+    def test_dos_ejecuciones_a_la_vez_se_rechazan(self):
+        # La salida se captura redirigiendo stdout (global al proceso): solo puede correr una a la vez.
+        self.assertTrue(self.app.state.bloqueo.acquire(blocking=False))
+        self.addCleanup(self.app.state.bloqueo.release)
+        self.assertEqual(self.post("/pipeline/descargar").status_code, 409)
+        self.assertEqual(self.llamadas, [])
+
+
+class TestEjecutarEnCli(unittest.TestCase):
+    """El ejecutor por defecto llama a los comandos de la CLI (sin duplicar su lógica) y captura su salida."""
+
+    def test_descargar_llama_a_comando_descargar_y_captura_stdout_y_stderr(self):
+        from buscador.web import ejecutar_en_cli
+
+        def falso(args):
+            print("[remotive] 5 ofertas")
+            print("Aviso en stderr", file=sys.stderr)
+            return 0
+
+        with patch("buscador.cli.comando_descargar", side_effect=falso) as comando:
+            codigo, salida = ejecutar_en_cli("descargar")
+        self.assertEqual(codigo, 0)
+        self.assertIn("[remotive] 5 ofertas", salida)
+        self.assertIn("Aviso en stderr", salida)
+        args = comando.call_args.args[0]
+        self.assertIsNone(args.fuente)
+        self.assertFalse(args.force)  # el botón respeta "ya descargaste hoy": no repite sin --force
+
+    def test_filtrar_llama_a_comando_filtrar_con_los_valores_por_defecto(self):
+        from buscador.web import ejecutar_en_cli
+
+        with patch("buscador.cli.comando_filtrar", return_value=1) as comando:
+            codigo, _ = ejecutar_en_cli("filtrar")
+        self.assertEqual(codigo, 1)
+        args = comando.call_args.args[0]
+        self.assertIsNone(args.fecha)
+        self.assertIsNone(args.minimo)
+
+
 class TestComandoWeb(unittest.TestCase):
     def ejecutar(self, **args):
         """Ejecuta `comando_web` con uvicorn y el navegador simulados; devuelve (código, run, abrir)."""
