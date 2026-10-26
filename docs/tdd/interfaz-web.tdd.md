@@ -30,6 +30,16 @@
 ## Hallazgo del revisor que NO se reproduce
 El `security-reviewer` indicó que los 400 de "Host inválido" salían sin CSP. Se comprobó con una petición real: **ya llevaban CSP y `nosniff`**, porque en Starlette el último middleware añadido es la capa externa. No se cambió código; se dejó el test de regresión `test_host_invalido_responde_400_con_cabeceras_de_seguridad`.
 
+## Corrección posterior: la comprobación de `Origin` bloqueaba al navegador real
+Al probar en Brave, los botones respondían «Origen no permitido». Causa: con `Referrer-Policy: no-referrer` el navegador manda `Origin: null` en los POST, incluso del mismo sitio, y la primera versión solo aceptaba el nombre del host. Habría roto también Descartar, Aprobar y Enviada. Los tests de entonces usaban un `Origin` inventado, no el que manda un navegador.
+
+| Fase | Resultado |
+|---|---|
+| RED | `test_post_real_de_navegador_con_origin_null_se_acepta` y `test_sec_fetch_site_de_otro_sitio_se_rechaza…` → `Ran 10 — FAILED (failures=2)` |
+| GREEN | `Ran 260 tests — OK` |
+
+Regla actual: se rechaza si `Sec-Fetch-Site` no es `same-origin`/`none`; `Origin: null` solo pasa con `Sec-Fetch-Site: same-origin` (cabecera que el navegador pone y la página no puede falsificar); sin cabeceras (curl, tests) manda el token. Lección: probar la defensa con las cabeceras que envía un navegador de verdad.
+
 ## Pendiente (no bloquea el PR)
 - `_tipo_motivo` interpreta el texto de los motivos de `filtros.py` para colorear chips; si cambia el formato, se rompe en silencio. Lo ideal es que `filtros.py` entregue el signo del motivo.
 - `CLAUDE.md` debería mencionar el extra `[web]` (FastAPI, uvicorn, Jinja2) además de `anthropic`, y fijar la versión de `coverage` en `dev`.
