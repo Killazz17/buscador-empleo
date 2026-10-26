@@ -67,6 +67,45 @@ class BaseCli(unittest.TestCase):
         return sorted(p.relative_to(self.data).as_posix() for p in self.data.rglob("*") if p.is_file())
 
 
+class TestAtribucionDeFuentes(unittest.TestCase):
+    """Los términos de las fuentes piden citarlas: el texto sale de FUENTES, no de una línea fija."""
+
+    def test_las_fuentes_reales_declaran_titulo_y_sitio(self):
+        from buscador.fuentes import FUENTES
+        self.assertGreaterEqual(len(FUENTES), 4)
+        for nombre, clase in FUENTES.items():
+            with self.subTest(fuente=nombre):
+                self.assertTrue(clase.titulo)
+                self.assertTrue(clase.sitio.startswith("https://"))
+
+    def test_la_atribucion_cita_cada_fuente_real_con_su_sitio(self):
+        from buscador.fuentes import FUENTES
+        texto = cli.atribucion(list(FUENTES))
+        for clase in FUENTES.values():
+            with self.subTest(fuente=clase.titulo):
+                self.assertIn(f"{clase.titulo} ({clase.sitio})", texto)
+
+
+class TestAtribucionEnLaSalida(BaseCli):
+    def linea_de_fuentes(self, fuente):
+        with patch("sys.stdout", new_callable=io.StringIO) as salida, patch("sys.stderr"):
+            cli.comando_descargar(argparse.Namespace(search=None, fuente=fuente, force=False))
+        lineas = [x for x in salida.getvalue().splitlines() if x.startswith("Fuentes:")]
+        self.assertEqual(len(lineas), 1)
+        return lineas[0]
+
+    def test_cita_todas_las_fuentes_consultadas(self):
+        linea = self.linea_de_fuentes(None)
+        # Las fuentes de prueba no declaran título: se usa su nombre.
+        self.assertIn("falsa", linea)
+        self.assertIn("rota", linea)
+
+    def test_con_una_sola_fuente_solo_cita_esa(self):
+        linea = self.linea_de_fuentes("falsa")
+        self.assertIn("falsa", linea)
+        self.assertNotIn("rota", linea)
+
+
 class TestNombreDeArchivo(BaseCli):
     """Hallazgo 1: --search no confiable en el nombre del archivo."""
 

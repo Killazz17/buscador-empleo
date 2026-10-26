@@ -15,6 +15,8 @@ URL_API = "https://remotive.com/api/remote-jobs"
 
 class Remotive(Fuente):
     nombre = "remotive"
+    titulo = "Remotive"
+    sitio = "https://remotive.com"
     limite_diario = 4
 
     def descargar(self, search: str | None = None) -> tuple[dict, list[Oferta]]:

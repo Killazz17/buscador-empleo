@@ -25,6 +25,8 @@ SECCIONES = ("description", "projects", "functions", "desirable", "benefits")
 
 class GetOnBoard(Fuente):
     nombre = "getonboard"
+    titulo = "Get on Board"
+    sitio = "https://www.getonbrd.com"
 
     def descargar(self, search: str | None = None) -> tuple[dict, list[Oferta]]:
         paginas = []

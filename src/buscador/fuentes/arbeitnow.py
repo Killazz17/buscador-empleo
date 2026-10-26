@@ -22,6 +22,8 @@ PAUSA_SEGUNDOS = 1
 
 class Arbeitnow(Fuente):
     nombre = "arbeitnow"
+    titulo = "Arbeitnow"
+    sitio = "https://www.arbeitnow.com"
 
     def descargar(self, search: str | None = None) -> tuple[dict, list[Oferta]]:
         paginas = []
