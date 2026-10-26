@@ -147,12 +147,24 @@ def descargar_fuente(fuente: Fuente, args: argparse.Namespace) -> bool:
     return True
 
 
+def atribucion(nombres: list[str]) -> str:
+    """Línea de atribución que piden los términos de las fuentes, generada desde FUENTES.
+
+    Sale de los datos de cada fuente (título y sitio) en vez de un texto fijo: así una fuente nueva
+    se cita sola y la línea nunca queda desactualizada.
+    """
+    partes = []
+    for nombre in nombres:
+        clase = FUENTES[nombre]
+        partes.append(f"{clase.titulo or nombre} ({clase.sitio})" if clase.sitio else clase.titulo or nombre)
+    return "Fuentes: " + ", ".join(partes)
+
+
 def comando_descargar(args: argparse.Namespace) -> int:
     nombres = [args.fuente] if args.fuente else list(FUENTES)
     # Si una fuente falla, seguimos con las demás: una API caída no debe frenar todo el pipeline.
     resultados = [descargar_fuente(FUENTES[n](), args) for n in nombres]
-    # Atribución que piden los términos de ambas APIs.
-    print("Fuentes: Remotive (https://remotive.com), Arbeitnow (https://www.arbeitnow.com)")
+    print(atribucion(nombres))
     return 0 if all(resultados) else 1
 
 

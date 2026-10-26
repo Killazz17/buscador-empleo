@@ -26,6 +26,8 @@ PAUSA_SEGUNDOS = 1
 
 class WeWorkRemotely(Fuente):
     nombre = "weworkremotely"
+    titulo = "We Work Remotely"
+    sitio = "https://weworkremotely.com"
 
     def descargar(self, search: str | None = None) -> tuple[dict, list[Oferta]]:
         feeds: dict[str, str] = {}

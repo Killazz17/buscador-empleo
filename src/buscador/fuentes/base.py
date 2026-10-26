@@ -53,6 +53,10 @@ class FuenteError(Exception):
 class Fuente(ABC):
     # Nombre corto, se usa en los nombres de archivo y en el campo Oferta.fuente.
     nombre: str
+    # Cómo se cita la fuente al usuario (la atribución que piden sus términos) y su web. Cada fuente real
+    # los define; una fuente de prueba puede omitirlos y se cita por su `nombre`.
+    titulo: str = ""
+    sitio: str = ""
     # Máximo de descargas al día que permiten los términos de la API (None = sin límite declarado).
     limite_diario: int | None = None
 
