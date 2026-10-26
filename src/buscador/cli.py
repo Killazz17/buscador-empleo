@@ -13,11 +13,11 @@
 
 import argparse
 import hashlib
-import webbrowser
 import json
 import os
 import re
 import sys
+import webbrowser
 from dataclasses import asdict
 from datetime import date
 from pathlib import Path

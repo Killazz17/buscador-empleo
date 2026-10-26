@@ -5,10 +5,13 @@ XSS (autoescape), CSRF (token por arranque), DNS rebinding (solo localhost) y co
 """
 
 import argparse
+import io
 import re
 import sqlite3
+import sys
 import tempfile
 import unittest
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest.mock import patch
 
@@ -96,6 +99,12 @@ class TestAcciones(BaseWeb):
         # CSRF: otra web abierta en tu navegador no conoce el token de esta sesión.
         self.assertEqual(self.post(f"/ofertas/{self.ids['a']}/descartar", token=False).status_code, 403)
         r = self.web.post(f"/ofertas/{self.ids['a']}/descartar", data={"token": "falso"}, follow_redirects=False)
+        self.assertEqual(r.status_code, 403)
+        self.assertEqual(self.estado(), "nueva")
+
+    def test_token_con_caracteres_no_ascii_da_403_y_no_500(self):
+        # compare_digest con str lanza TypeError si hay no-ASCII: un token con "ñ" no debe tumbar el servidor.
+        r = self.web.post(f"/ofertas/{self.ids['a']}/descartar", data={"token": "ñandú"}, follow_redirects=False)
         self.assertEqual(r.status_code, 403)
         self.assertEqual(self.estado(), "nueva")
 
@@ -198,13 +207,79 @@ class TestRediseno(BaseWeb):
         self.assertNotEqual(nonce, re.search(r"'nonce-([^']+)'", self.web.get("/").headers["content-security-policy"]).group(1))
 
 
+class TestCierreDeRama(BaseWeb):
+    """Hallazgos de las revisiones (python-reviewer y security-reviewer) antes del PR."""
+
+    def test_sin_recursos_externos_ni_fuentes_de_terceros(self):
+        # Privacidad: cada carga no debe pedir nada a un tercero (IP expuesta, CSP más débil).
+        r = self.web.get("/")
+        self.assertNotIn("fonts.g", r.text)
+        self.assertNotIn("https://", r.headers["content-security-policy"])
+
+    def test_host_invalido_responde_400_con_cabeceras_de_seguridad(self):
+        r = TestClient(self.app, base_url="http://evil.com").get("/")
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("frame-ancestors 'none'", r.headers["content-security-policy"])
+        self.assertEqual(r.headers["x-content-type-options"], "nosniff")
+
+    def test_post_con_origin_ajeno_se_rechaza(self):
+        # Defensa en profundidad: aunque el token se filtrara, una página ajena no puede enviar el POST.
+        r = self.web.post(f"/ofertas/{self.ids['a']}/descartar", data={"token": self.token},
+                          headers={"Origin": "http://evil.com"}, follow_redirects=False)
+        self.assertEqual(r.status_code, 403)
+        self.assertEqual(self.estado(), "nueva")
+
+    def test_post_con_origin_local_se_acepta(self):
+        r = self.web.post(f"/ofertas/{self.ids['a']}/descartar", data={"token": self.token},
+                          headers={"Origin": "http://127.0.0.1:8765"}, follow_redirects=False)
+        self.assertEqual(r.status_code, 303)
+
+    def test_errores_http_se_muestran_como_pagina_html(self):
+        casos = (self.web.get("/ofertas/99999"),                                   # 404
+                 self.web.post(f"/ofertas/{self.ids['a']}/descartar", data={"token": "x"}),  # 403
+                 self.post(f"/ofertas/{self.ids['a']}/restaurar"))                 # 409: nueva → nueva
+        for r, codigo, texto in zip(casos, (404, 403, 409), ("No existe la oferta #99999", "Token inválido", "")):
+            with self.subTest(codigo=codigo):
+                self.assertEqual(r.status_code, codigo)
+                self.assertIn("text/html", r.headers["content-type"])
+                self.assertIn(texto, r.text)
+                self.assertIn("frame-ancestors", r.headers["content-security-policy"])
+
+    def test_nota_larga_se_recorta(self):
+        self.post(f"/ofertas/{self.ids['a']}/descartar", nota="x" * 5000)
+        nota = self.repo.historial(self.ids["a"])[-1].nota
+        self.assertLessEqual(len(nota), 500)
+
+    def test_carta_enorme_se_rechaza_sin_guardar(self):
+        r = self.preparar(carta="a" * 50_000)
+        self.assertEqual(r.status_code, 400)
+        self.assertEqual(self.estado(), "nueva")
+
+
 class TestComandoWeb(unittest.TestCase):
+    def ejecutar(self, **args):
+        """Ejecuta `comando_web` con uvicorn y el navegador simulados; devuelve (código, run, abrir)."""
+        with patch("uvicorn.run") as run, patch("webbrowser.open") as abrir, redirect_stdout(io.StringIO()):
+            codigo = cli.comando_web(argparse.Namespace(**{"puerto": 8765, "sin_navegador": False, **args}))
+        return codigo, run, abrir
+
     def test_arranca_solo_en_localhost_y_abre_el_navegador(self):
-        with patch("uvicorn.run") as run, patch("webbrowser.open") as abrir:
-            cli.comando_web(argparse.Namespace(puerto=8765, sin_navegador=False))
+        _, run, abrir = self.ejecutar()
         self.assertEqual(run.call_args.kwargs["host"], "127.0.0.1")
         self.assertEqual(run.call_args.kwargs["port"], 8765)
         abrir.assert_called_once()
+
+    def test_sin_navegador_no_lo_abre(self):
+        _, run, abrir = self.ejecutar(sin_navegador=True)
+        abrir.assert_not_called()
+        run.assert_called_once()
+
+    def test_sin_dependencias_web_sale_con_codigo_1(self):
+        # Simula que fastapi/uvicorn no están instalados: debe avisar, no romper con un traceback.
+        with patch.dict(sys.modules, {"uvicorn": None}), redirect_stderr(io.StringIO()) as err:
+            codigo = cli.comando_web(argparse.Namespace(puerto=8765, sin_navegador=True))
+        self.assertEqual(codigo, 1)
+        self.assertIn('".[web]"', err.getvalue())
 
 
 if __name__ == "__main__":

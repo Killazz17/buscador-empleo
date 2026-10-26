@@ -18,7 +18,7 @@
   .papel { position:relative; background:var(--papel); border:1px solid var(--borde); border-radius:12px; padding:28px 30px;
            font:16.5px/1.7 Georgia, "Times New Roman", serif; white-space:pre-wrap; box-shadow:var(--sombra); }
   .sello { position:absolute; top:18px; right:18px; padding:6px 14px; border:3px solid var(--pos); color:var(--pos); border-radius:10px;
-           font:800 15px/1 "Plus Jakarta Sans", sans-serif; letter-spacing:.14em; transform:rotate(-8deg); opacity:.85; }
+           font:800 15px/1 system-ui, "Segoe UI", sans-serif; letter-spacing:.14em; transform:rotate(-8deg); opacity:.85; }
   .papel:has(.sello) { padding-top:68px; } /* el sello no tapa el saludo de la carta */
   [data-aviso="aprobada"] .sello { animation:sellar 700ms cubic-bezier(.3,1.6,.5,1) both 150ms; }
   @keyframes sellar { from { transform:rotate(-8deg) scale(2.6); opacity:0; } }

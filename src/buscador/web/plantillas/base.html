@@ -4,9 +4,6 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block titulo %}Tu mesa de postulaciones{% endblock %}</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <script nonce="{{ nonce }}">
     // Antes de pintar: aplicar el tema guardado (evita el "parpadeo" claro→oscuro).
     try { const t = localStorage.getItem("tema"); if (t) document.documentElement.dataset.tema = t;
@@ -29,7 +26,7 @@
     }
     *, *::before, *::after { box-sizing:border-box; }
     html { scroll-behavior:smooth; }
-    body { margin:0; font:16px/1.55 "Plus Jakarta Sans", system-ui, sans-serif; background:var(--fondo); color:var(--texto);
+    body { margin:0; font:16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background:var(--fondo); color:var(--texto);
            -webkit-font-smoothing:antialiased; transition:background var(--medio), color var(--medio); }
     a { color:var(--primario); }
     :focus-visible { outline:3px solid var(--secundario); outline-offset:2px; border-radius:6px; }
